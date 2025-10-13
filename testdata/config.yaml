@@ -1,0 +1,34 @@
+acceptTOS: true
+email: "test@example.com"
+httpAddr: ":80"
+tlsAddr: ":443"
+cacheDir: "/tmp/data"
+oidc:
+  - name: "mock-oidc"
+    authorizationEndpoint: "http://mock-oidc-server.example.com:8080/authorization"
+    tokenEndpoint: "http://mock-oidc-server.example.com:8080/token"
+    redirectUrl: "https://www.example.com/redirect"
+    clientId: "CLIENTID"
+    clientSecret: "CLIENTSECRET"
+    domain: "example.com"
+backends:
+  - serverNames:
+      - "www.example.com"
+    mode: "local"
+    documentRoot: "/html"
+    sso:
+      provider: "mock-oidc"
+  - serverNames:
+      - "photos.example.com"
+    mode: "http"
+    addresses:
+      - "photos-backend:8080"
+  - serverNames:
+      - "sshterm.example.com"
+    mode: "local"
+    documentRoot: "/sshterm"
+    sso:
+      provider: "mock-oidc"
+webSockets:
+  - endpoint: "wss://sshterm.example.com/ws"
+    address: "ssh:22"
