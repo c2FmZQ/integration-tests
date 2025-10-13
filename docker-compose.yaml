@@ -1,0 +1,67 @@
+services:
+  tlsproxy:
+    image: c2fmzq/tlsproxy:integrationtest
+    user: "1000:1000"
+    hostname: tlsproxy.example.com
+    command: "--use-ephemeral-certificate-manager"
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - ./testdata/config.yaml:/config/config.yaml
+      - ./testdata:/html
+      - ./sshterm/docroot:/sshterm
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 100M
+          mode: 0o1777
+    networks:
+      default:
+        aliases:
+          - www.example.com
+          - photos.example.com
+          - sshterm.example.com
+
+  photos-backend:
+    image: c2fmzq/c2fmzq-server:integrationtest
+    user: "1000:1000"
+    hostname: photos-backend.example.com
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 100M
+          mode: 0o1777
+    environment:
+      - C2FMZQ_ADDRESS=:8080
+      - C2FMZQ_PASSPHRASE=foobar
+      - C2FMZQ_PASSPHRASE_FILE=
+      - C2FMZQ_DATABASE=/tmp/data
+
+  mock-oidc-server:
+    image: c2fmzq/mock-oidc-server:integrationtest
+    user: "1000:1000"
+    hostname: mock-oidc-server.example.com
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          size: 100M
+          mode: 0o1777
+
+  headless-shell:
+    image: "chromedp/headless-shell:141.0.7390.37"
+    ports:
+      - "9222:9222"
+    command: [
+      "--ignore-certificate-errors",
+    ]
+
+  tests:
+    image: c2fmzq/integration-tests:integrationtest
+    depends_on:
+      - tlsproxy
+      - photos-backend
+      - headless-shell
+      - mock-oidc-server
