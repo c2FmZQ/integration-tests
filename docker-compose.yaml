@@ -8,9 +8,10 @@ services:
       - "8080:80"
       - "8443:443"
     volumes:
-      - ./testdata/config.yaml:/config/config.yaml
+      - ./testdata/tlsproxy-config.yaml:/config/config.yaml
       - ./testdata:/html
       - ./sshterm/docroot:/sshterm
+      - ./testdata/sshterm-config.json:/sshterm/config.json
       - type: tmpfs
         target: /tmp
         tmpfs:
@@ -21,7 +22,7 @@ services:
         aliases:
           - www.example.com
           - photos.example.com
-          - sshterm.example.com
+          - ssh.example.com
 
   photos-backend:
     image: c2fmzq/c2fmzq-server:integrationtest
@@ -50,18 +51,37 @@ services:
           size: 100M
           mode: 0o1777
 
+  mock-ssh-server:
+    image: c2fmzq/mock-ssh-server:integrationtest
+    user: "1000:1000"
+    hostname: mock-ssh-server.example.com
+    volumes:
+      - ./testdata/mock_ssh_server_key:/mock_ssh_server_key
+
   headless-shell:
     image: "chromedp/headless-shell:141.0.7390.37"
+    user: "1000:1000"
     ports:
       - "9222:9222"
     command: [
       "--ignore-certificate-errors",
     ]
+    volumes:
+      - type: tmpfs
+        target: /nonexistent
+        tmpfs:
+          size: 10M
+          mode: 0o777
 
   tests:
     image: c2fmzq/integration-tests:integrationtest
+    user: "1000:1000"
+    volumes:
+      - ./testdata:/testdata
+      - ./output:/output
     depends_on:
       - tlsproxy
       - photos-backend
       - headless-shell
       - mock-oidc-server
+      - mock-ssh-server
