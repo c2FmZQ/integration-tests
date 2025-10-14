@@ -24,11 +24,16 @@ backends:
     addresses:
       - "photos-backend:8080"
   - serverNames:
-      - "sshterm.example.com"
+      - "ssh.example.com"
     mode: "local"
     documentRoot: "/sshterm"
     sso:
       provider: "mock-oidc"
+sshCertificateAuthorities:
+  - name: "TEST SSH CA"
+    keyType: ecdsa-p256
+    publicKeyEndpoint: https://ssh.example.com/ssh/ca
+    certificateEndpoint: https://ssh.example.com/ssh/cert
 webSockets:
-  - endpoint: "wss://sshterm.example.com/ws"
-    address: "ssh:22"
+  - endpoint: "wss://ssh.example.com/ws"
+    address: "mock-ssh-server.example.com:2222"

@@ -1,4 +1,5 @@
 mock-oidc-server/mock-oidc-server
+mock-ssh-server/mock-ssh-server
 tests/integration-tests
 photos/
 sshterm/
