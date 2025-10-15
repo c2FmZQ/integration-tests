@@ -10,15 +10,11 @@ The following diagram shows the architecture of the integration test environment
 graph TD
     subgraph "Docker Compose"
         A[tests] --> B[headless-shell];
-        B --> C[tlsproxy];
+        B -->|HTTPS| C[tlsproxy];
         C --> D[photos-backend];
         C --> E[mock-oidc-server];
         C --> F[mock-ssh-server];
         C --> G[sshterm];
-    end
-
-    subgraph "User Interaction"
-        H[User] -->|HTTPS| C;
     end
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
