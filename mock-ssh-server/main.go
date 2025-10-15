@@ -85,7 +85,7 @@ func main() {
 		}
 		log.Printf("Accepted new connection from %s", conn.RemoteAddr())
 
-		_, chans, reqs, err := ssh.NewServerConn(conn, config)
+		serverConn, chans, reqs, err := ssh.NewServerConn(conn, config)
 		if err != nil {
 			log.Printf("Failed to handshake: %v", err)
 			continue
@@ -117,8 +117,9 @@ func main() {
 
 			go func() {
 				defer channel.Close()
+				channel.Write([]byte(fmt.Sprintf("Hello %s\n", serverConn.User())))
 				for i := range 10 {
-					channel.Write([]byte(fmt.Sprintf("hello %d\n", 10-i)))
+					channel.Write([]byte(fmt.Sprintf("%d\n", 10-i)))
 					time.Sleep(1 * time.Second)
 				}
 				channel.Write([]byte("bye\n"))
