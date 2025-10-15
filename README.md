@@ -34,7 +34,7 @@ The services are:
 *   **`photos-backend`**: The backend for the photos application.
 *   **`mock-oidc-server`**: A mock OIDC server for testing authentication.
 *   **`mock-ssh-server`**: A mock SSH server for testing `sshterm`.
-*   **`sshterm`**: A web-based SSH terminal.
+*   **`sshterm`**: A web-based SSH terminal, served as static content by the `tlsproxy` service.
 
 ## Tests
 
