@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -39,6 +40,11 @@ func runPhotosTests() {
 	username := "test@example.com"
 	password := "password"
 
+	absPath, err := filepath.Abs("tests/test.jpg")
+	if err != nil {
+		log.Fatalf("filepath.Abs: %v", err)
+	}
+
 	// Test photos UI
 	if err := chromedp.Run(ctx,
 		chromedp.Navigate(`https://photos.example.com`),
@@ -69,6 +75,13 @@ func runPhotosTests() {
 		chromedp.Click(`#add-button`, chromedp.ByQuery),
 		chromedp.WaitVisible(`#menu-upload-files`, chromedp.ByQuery),
 		chromedp.Click(`#menu-upload-files`, chromedp.ByQuery),
+
+		chromedp.WaitVisible(`#upload-file-input`, chromedp.ByQuery),
+		chromedp.SetUploadFiles(`#upload-file-input`, []string{absPath}),
+		chromedp.WaitVisible(`.upload-file-list-upload-button`, chromedp.ByQuery),
+		chromedp.Click(`.upload-file-list-upload-button`, chromedp.ByQuery),
+
+		chromedp.WaitVisible(`img[alt="test.jpg"]`, chromedp.ByQuery),
 	); err != nil {
 		log.Fatalf("Upload file: %v", err)
 	}
