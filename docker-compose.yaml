@@ -36,7 +36,7 @@ services:
           mode: 0o1777
     environment:
       - C2FMZQ_ADDRESS=:8080
-      - C2FMZQ_PASSPHRASE=foobar
+      - C2FMZQ_PASSPHRASE=test
       - C2FMZQ_PASSPHRASE_FILE=
       - C2FMZQ_DATABASE=/tmp/data
 
@@ -72,6 +72,7 @@ services:
         tmpfs:
           size: 10M
           mode: 0o777
+      - ./testdata/test.jpg:/test.jpg
 
   tests:
     image: c2fmzq/integration-tests:integrationtest

@@ -16,8 +16,8 @@ func main() {
 	time.Sleep(10 * time.Second)
 
 	runPhotosTests()
-	//runSSOTests()
-	//runSSHTermTests()
+	runSSOTests()
+	runSSHTermTests()
 
 	fmt.Println("Integration tests passed!")
 }
@@ -60,19 +60,26 @@ func runPhotosTests() {
 
 		chromedp.WaitVisible(`#gallery`, chromedp.ByQuery),
 	); err != nil {
+		dumpPageContent(ctx)
 		log.Fatalf("Register account: %v", err)
 	}
-	dumpScreen(ctx)
 
 	if err := chromedp.Run(ctx,
 		chromedp.WaitVisible(`#add-button`, chromedp.ByQuery),
 		chromedp.Click(`#add-button`, chromedp.ByQuery),
 		chromedp.WaitVisible(`#menu-upload-files`, chromedp.ByQuery),
 		chromedp.Click(`#menu-upload-files`, chromedp.ByQuery),
+
+		chromedp.WaitVisible(`#upload-file-input`, chromedp.ByQuery),
+		chromedp.SetUploadFiles(`#upload-file-input`, []string{"/test.jpg"}),
+		chromedp.WaitVisible(`.upload-file-list-upload-button`, chromedp.ByQuery),
+		chromedp.Click(`.upload-file-list-upload-button`, chromedp.ByQuery),
+
+		chromedp.WaitVisible(`img[alt="test.jpg"]`, chromedp.ByQuery),
 	); err != nil {
+		dumpPageContent(ctx)
 		log.Fatalf("Upload file: %v", err)
 	}
-	dumpScreen(ctx)
 	fmt.Println("Photos create account and upload test passed")
 }
 
@@ -94,25 +101,29 @@ func runSSHTermTests() {
 
 	// Test sshterm UI
 	if err := navigateWithSSO(ctx, url); err != nil {
+		dumpPageContent(ctx)
 		log.Fatalf("navigate(%s): %v", url, err)
 	}
 	var termContent string
+	want := "Hello bob@example.com"
 	// Poll for the terminal content to contain "hello"
 	for i := 0; i < 40; i++ {
 		log.Printf("poll %d", i)
 		if err := chromedp.Run(ctx,
-			chromedp.EvaluateAsDevTools(`Array.from(document.querySelectorAll('div.xterm-rows>div')).map(x => x.textContent).join('\n')`, &termContent),
+			chromedp.Evaluate(`Array.from(document.querySelectorAll('div.xterm-rows>div')).map(x => x.textContent).join('\n')`, &termContent),
 		); err != nil {
+			dumpPageContent(ctx)
 			log.Fatalf("Failed to get terminal content: %v", err)
 		}
 		log.Printf("terminal content:\n%s", termContent)
-		if strings.Contains(termContent, "hello") {
+		if strings.Contains(termContent, want) {
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	if !strings.Contains(termContent, "hello") {
+	if !strings.Contains(termContent, want) {
+		dumpPageContent(ctx)
 		log.Fatalf("Unexpected terminal content: %q", termContent)
 	}
 	fmt.Println("sshterm connect test passed")
@@ -149,7 +160,9 @@ func click(ctx context.Context, selector string) bool {
 		log.Printf("click(%s): %v", selector, err)
 		return false
 	}
-	log.Printf("click(%s) = %v", selector, present)
+	if present {
+		log.Printf("clicked %s", selector)
+	}
 	return present
 }
 
@@ -169,7 +182,7 @@ func navigateWithSSO(ctx context.Context, url string) error {
 				clicked = true
 				break
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(500 * time.Millisecond)
 		}
 		if clicked {
 			continue
@@ -181,7 +194,7 @@ func navigateWithSSO(ctx context.Context, url string) error {
 
 func screenshot(ctx context.Context, filename string) {
 	var buf []byte
-	if err := chromedp.Run(ctx,
+	if err := chromedp.Run(context.WithoutCancel(ctx),
 		chromedp.CaptureScreenshot(&buf),
 	); err != nil {
 		log.Fatalf("Failed to take screenshot: %v", err)
@@ -191,15 +204,15 @@ func screenshot(ctx context.Context, filename string) {
 	}
 }
 
-func dumpScreen(ctx context.Context) {
+func dumpPageContent(ctx context.Context) {
 	var pageContent string
-	if err := chromedp.Run(ctx,
+	if err := chromedp.Run(context.WithoutCancel(ctx),
 		chromedp.WaitReady(`body`),
 		chromedp.OuterHTML(`body`, &pageContent, chromedp.ByQuery),
 	); err != nil {
 		log.Fatalf("OuterHTML(body): %v", err)
 	}
-	log.Printf("BODY: %s", pageContent)
+	log.Printf("==== PAGE CONTENT ====\n%s\n======================", pageContent)
 }
 
 func navigateContains(ctx context.Context, url, content string) {
