@@ -9,7 +9,7 @@ The following diagram shows the architecture of the integration test environment
 ```mermaid
 graph TD
     subgraph "Docker Compose"
-        A[tests] --> B[headless-shell];
+        A[devtests] --> B[headless-shell];
         B -->|HTTPS| C[tlsproxy];
         C --> D[photos-backend];
         C --> E[mock-oidc-server];
@@ -28,7 +28,7 @@ graph TD
 
 The services are:
 
-*   **`tests`**: The main test container that runs the integration tests written in Go.
+*   **`devtests`**: The main test container that runs the integration tests written in Go.
 *   **`headless-shell`**: A headless Chrome browser used to perform UI tests.
 *   **`tlsproxy`**: A TLS proxy that provides HTTPS termination, OIDC authentication, and routing to the backend services.
 *   **`photos-backend`**: The backend for the photos application.

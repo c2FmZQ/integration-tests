@@ -1,40 +1,68 @@
-package main
+package integration_test
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"crypto/tls"
+	"net/http"
 	"os"
 	"strings"
+	"testing"
 	"time"
 
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
 
-func main() {
-	// Wait for services to be ready
-	time.Sleep(10 * time.Second)
+const (
+	chromeWS = "ws://headless-shell:9222"
+)
 
-	runPhotosTests()
-	runSSOTests()
-	runSSHTermTests()
-
-	fmt.Println("Integration tests passed!")
+func TestHTTPS(t *testing.T) {
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+	to := time.After(10 * time.Second)
+	for _, h := range []struct {
+		url  string
+		code int
+	}{
+		{"https://www.example.com", 200},
+		{"https://www.example.com/foo/", 403},
+		{"https://ssh.example.com", 403},
+		{"https://photos.example.com", 200},
+	} {
+		for {
+			resp, err := client.Get(h.url)
+			if err == nil && resp.StatusCode == h.code {
+				break
+			}
+			t.Logf("Waiting for %s", h.url)
+			select {
+			case <-to:
+				t.Fatalf("not ready: %s", h.url)
+			case <-time.After(250 * time.Millisecond):
+			}
+		}
+	}
 }
 
-func runPhotosTests() {
-	fmt.Println("Running Photos tests...")
-
+func TestPhotos(t *testing.T) {
 	// create context
-	ctx, cancel := chromedp.NewRemoteAllocator(context.Background(), "ws://headless-shell:9222")
+	ctx, cancel := chromedp.NewRemoteAllocator(t.Context(), chromeWS)
 	defer cancel()
 
-	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithLogf(log.Printf))
+	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithLogf(t.Logf))
 	defer cancel()
 
 	// create a timeout
 	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
+
+	clearCookies(t, ctx)
 
 	username := "test@example.com"
 	password := "password"
@@ -60,8 +88,8 @@ func runPhotosTests() {
 
 		chromedp.WaitVisible(`#gallery`, chromedp.ByQuery),
 	); err != nil {
-		dumpPageContent(ctx)
-		log.Fatalf("Register account: %v", err)
+		dumpPageContent(t, ctx)
+		t.Fatalf("Register account: %v", err)
 	}
 
 	if err := chromedp.Run(ctx,
@@ -77,45 +105,44 @@ func runPhotosTests() {
 
 		chromedp.WaitVisible(`img[alt="test.jpg"]`, chromedp.ByQuery),
 	); err != nil {
-		dumpPageContent(ctx)
-		log.Fatalf("Upload file: %v", err)
+		dumpPageContent(t, ctx)
+		t.Fatalf("Upload file: %v", err)
 	}
-	fmt.Println("Photos create account and upload test passed")
 }
 
-func runSSHTermTests() {
-	fmt.Println("Running SSHTerm tests...")
-
+func TestSSHTerm(t *testing.T) {
 	// create context
-	ctx, cancel := chromedp.NewRemoteAllocator(context.Background(), "ws://headless-shell:9222")
+	ctx, cancel := chromedp.NewRemoteAllocator(t.Context(), chromeWS)
 	defer cancel()
 
-	ctx, cancel = chromedp.NewContext(ctx)
+	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithLogf(t.Logf))
 	defer cancel()
 
 	// create a timeout
 	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
 	defer cancel()
 
+	clearCookies(t, ctx)
+
 	url := "https://ssh.example.com"
 
 	// Test sshterm UI
-	if err := navigateWithSSO(ctx, url); err != nil {
-		dumpPageContent(ctx)
-		log.Fatalf("navigate(%s): %v", url, err)
+	if err := navigateWithSSO(t, ctx, "bob@example.com", url); err != nil {
+		dumpPageContent(t, ctx)
+		t.Fatalf("navigate(%s): %v", url, err)
 	}
 	var termContent string
 	want := "Hello bob@example.com"
 	// Poll for the terminal content to contain "hello"
 	for i := 0; i < 40; i++ {
-		log.Printf("poll %d", i)
+		t.Logf("poll %d", i)
 		if err := chromedp.Run(ctx,
 			chromedp.Evaluate(`Array.from(document.querySelectorAll('div.xterm-rows>div')).map(x => x.textContent).join('\n')`, &termContent),
 		); err != nil {
-			dumpPageContent(ctx)
-			log.Fatalf("Failed to get terminal content: %v", err)
+			dumpPageContent(t, ctx)
+			t.Fatalf("Failed to get terminal content: %v", err)
 		}
-		log.Printf("terminal content:\n%s", termContent)
+		t.Logf("terminal content:\n%s", termContent)
 		if strings.Contains(termContent, want) {
 			break
 		}
@@ -123,31 +150,31 @@ func runSSHTermTests() {
 	}
 
 	if !strings.Contains(termContent, want) {
-		dumpPageContent(ctx)
-		log.Fatalf("Unexpected terminal content: %q", termContent)
+		dumpPageContent(t, ctx)
+		t.Fatalf("Unexpected terminal content: %q", termContent)
 	}
-	fmt.Println("sshterm connect test passed")
 }
 
-func runSSOTests() {
-	fmt.Println("Running SSO tests...")
-	ctx, cancel := chromedp.NewRemoteAllocator(context.Background(), "ws://headless-shell:9222")
+func TestSSO(t *testing.T) {
+	ctx, cancel := chromedp.NewRemoteAllocator(t.Context(), chromeWS)
 	defer cancel()
 
-	ctx, cancel = chromedp.NewContext(ctx)
+	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithLogf(t.Logf))
 	defer cancel()
 
 	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	navigateContains(ctx, "https://www.example.com/.sso/", "bob@example.com")
-	navigateContains(ctx, "https://www.example.com/", "Hello")
-
-	fmt.Println("SSO flow test passed")
+	clearCookies(t, ctx)
+	id := "bob@example.com"
+	navigateContains(t, ctx, "", "https://www.example.com/", "Hello")
+	navigateContains(t, ctx, id, "https://www.example.com/foo/", "sso only")
+	navigateContains(t, ctx, id, "https://www.example.com/.sso/", id)
 }
 
-func click(ctx context.Context, selector string) bool {
-	defer time.Sleep(500 * time.Millisecond)
+func click(t *testing.T, ctx context.Context, selector string) bool {
+	t.Helper()
+	defer time.Sleep(100 * time.Millisecond)
 	var present bool
 	if err := chromedp.Run(ctx, chromedp.Evaluate(`(function(){
 		const el = document.querySelector('`+selector+`');
@@ -157,32 +184,34 @@ func click(ctx context.Context, selector string) bool {
 		}
 		return false;
 	}())`, &present)); err != nil {
-		log.Printf("click(%s): %v", selector, err)
+		t.Logf("click(%s): %v", selector, err)
 		return false
 	}
 	if present {
-		log.Printf("clicked %s", selector)
+		t.Logf("clicked %s", selector)
 	}
 	return present
 }
 
-func navigateWithSSO(ctx context.Context, url string) error {
+func navigateWithSSO(t *testing.T, ctx context.Context, id, url string) error {
+	t.Helper()
 	if err := chromedp.Run(ctx, chromedp.Navigate(url)); err != nil {
 		return err
 	}
+	if id == "" {
+		return nil
+	}
 	elems := []string{
-		`a.button[tkey=login-button]`,
 		`button[tkey=sso-login]`,
-		`a.user-id-link[href*="bob@example.com"]`,
+		`a.user-id-link[href*="` + id + `"]`,
 	}
 	for {
 		var clicked bool
 		for _, e := range elems {
-			if click(ctx, e) {
+			if click(t, ctx, e) {
 				clicked = true
 				break
 			}
-			time.Sleep(500 * time.Millisecond)
 		}
 		if clicked {
 			continue
@@ -192,42 +221,52 @@ func navigateWithSSO(ctx context.Context, url string) error {
 	return nil
 }
 
-func screenshot(ctx context.Context, filename string) {
+func screenshot(t *testing.T, ctx context.Context, filename string) {
+	t.Helper()
 	var buf []byte
 	if err := chromedp.Run(context.WithoutCancel(ctx),
 		chromedp.CaptureScreenshot(&buf),
 	); err != nil {
-		log.Fatalf("Failed to take screenshot: %v", err)
+		t.Fatalf("Failed to take screenshot: %v", err)
 	}
 	if err := os.WriteFile(filename, buf, 0o644); err != nil {
-		log.Fatal(err)
+		t.Fatal(err)
 	}
 }
 
-func dumpPageContent(ctx context.Context) {
+func dumpPageContent(t *testing.T, ctx context.Context) {
+	t.Helper()
 	var pageContent string
 	if err := chromedp.Run(context.WithoutCancel(ctx),
 		chromedp.WaitReady(`body`),
 		chromedp.OuterHTML(`body`, &pageContent, chromedp.ByQuery),
 	); err != nil {
-		log.Fatalf("OuterHTML(body): %v", err)
+		t.Fatalf("OuterHTML(body): %v", err)
 	}
-	log.Printf("==== PAGE CONTENT ====\n%s\n======================", pageContent)
+	t.Logf("==== PAGE CONTENT ====\n%s\n======================", pageContent)
 }
 
-func navigateContains(ctx context.Context, url, content string) {
-	if err := navigateWithSSO(ctx, url); err != nil {
-		log.Fatalf("navigate(%s): %v", url, err)
+func navigateContains(t *testing.T, ctx context.Context, id, url, content string) {
+	t.Helper()
+	if err := navigateWithSSO(t, ctx, id, url); err != nil {
+		t.Fatalf("navigate(%s): %v", url, err)
 	}
 	var pageContent string
 	if err := chromedp.Run(ctx,
 		chromedp.WaitReady(`body`),
 		chromedp.OuterHTML(`body`, &pageContent, chromedp.ByQuery),
 	); err != nil {
-		log.Fatalf("OuterHTML(body): %v", err)
+		t.Fatalf("OuterHTML(body): %v", err)
 	}
 	if !strings.Contains(pageContent, content) {
-		screenshot(ctx, "screenshot-navigate-contains.png")
-		log.Fatalf("Content = %s, want %s", pageContent, content)
+		screenshot(t, ctx, "screenshot-navigate-contains.png")
+		t.Fatalf("Content = %s, want %s", pageContent, content)
+	}
+}
+
+func clearCookies(t *testing.T, ctx context.Context) {
+	t.Helper()
+	if err := chromedp.Run(ctx, network.ClearBrowserCookies()); err != nil {
+		t.Fatalf("clearCookies: %v", err)
 	}
 }

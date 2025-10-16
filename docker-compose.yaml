@@ -69,9 +69,13 @@ services:
           mode: 0o777
       - ./testdata/test.jpg:/test.jpg
 
-  tests:
+  devtests:
     image: c2fmzq/integration-tests:integrationtest
     user: "1000:1000"
+    command: [
+      "-test.v",
+      "-test.timeout=5m",
+    ]
     volumes:
       - ./testdata:/testdata
       - ./output:/output

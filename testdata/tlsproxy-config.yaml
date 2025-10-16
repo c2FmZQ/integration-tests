@@ -18,6 +18,8 @@ backends:
     documentRoot: "/html"
     sso:
       provider: "mock-oidc"
+      rules:
+        - paths: [/foo]
   - serverNames:
       - "photos.example.com"
     mode: "http"
