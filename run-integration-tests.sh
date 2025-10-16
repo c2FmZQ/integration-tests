@@ -5,7 +5,7 @@ cd "$(dirname $0)"
 if [[ ! -f "tlsproxy/Dockerfile" ]]; then
   git clone https://github.com/c2fmzq/tlsproxy.git
 fi
-if [[ "${TLSPROXY_BRANCH}" != "" ]]; then
+if [[ -n "${TLSPROXY_BRANCH}" ]]; then
   (cd tlsproxy && git fetch && git switch --detach "${TLSPROXY_BRANCH}")
 fi
 touch tlsproxy/version.sh
@@ -14,7 +14,7 @@ docker build -t c2fmzq/tlsproxy:integrationtest ./tlsproxy
 if [[ ! -f "photos/Dockerfile" ]]; then
   git clone https://github.com/c2fmzq/photos.git
 fi
-if [[ "${PHOTOS_BRANCH}" != "" ]]; then
+if [[ -n "${PHOTOS_BRANCH}" ]]; then
   (cd photos && git fetch && git switch --detach "${PHOTOS_BRANCH}")
 fi
 docker build -t c2fmzq/c2fmzq-server:integrationtest ./photos
@@ -22,7 +22,7 @@ docker build -t c2fmzq/c2fmzq-server:integrationtest ./photos
 if [[ ! -f "sshterm/build.sh" ]]; then
   git clone https://github.com/c2fmzq/sshterm.git
 fi
-if [[ "${SSHTERM_BRANCH}" != "" ]]; then
+if [[ -n "${SSHTERM_BRANCH}" ]]; then
   (cd sshterm && git fetch && git switch --detach "${SSHTERM_BRANCH}")
 fi
 ./sshterm/build.sh

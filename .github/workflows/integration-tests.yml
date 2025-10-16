@@ -4,15 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       tlsproxy_branch:
-        description: The tlsproxy branch to use
+        description: 'tlsproxy branch (default: main)'
         required: false
         type: string
       photos_branch:
-        description: The photos branch to use
+        description: 'photos branch (default: main)'
         required: false
         type: string
       sshterm_branch:
-        description: The sshterm branch to use
+        description: 'sshterm branch (default: main)'
         required: false
         type: string
   pull_request:
