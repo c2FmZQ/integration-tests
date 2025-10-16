@@ -5,10 +5,10 @@ services:
     hostname: tlsproxy.example.com
     command: "--use-ephemeral-certificate-manager"
     volumes:
-      - ./testdata/tlsproxy-config.yaml:/config/config.yaml
-      - ./testdata:/html
-      - ./sshterm/docroot:/sshterm
-      - ./testdata/sshterm-config.json:/sshterm/config.json
+      - ./testdata/tlsproxy-config.yaml:/config/config.yaml:ro
+      - ./testdata:/html:ro
+      - ./sshterm/docroot:/sshterm:ro
+      - ./testdata/sshterm-config.json:/sshterm/config.json:ro
       - type: tmpfs
         target: /tmp
         tmpfs:
@@ -53,7 +53,7 @@ services:
     user: "1000:1000"
     hostname: mock-ssh-server.example.com
     volumes:
-      - ./testdata/mock_ssh_server_key:/mock_ssh_server_key
+      - ./testdata/mock_ssh_server_key:/mock_ssh_server_key:ro
 
   headless-shell:
     image: "chromedp/headless-shell:141.0.7390.37"
@@ -77,7 +77,7 @@ services:
       "-test.timeout=5m",
     ]
     volumes:
-      - ./testdata:/testdata
+      - ./testdata:/testdata:ro
       - ./output:/output
     depends_on:
       - tlsproxy
@@ -85,3 +85,7 @@ services:
       - headless-shell
       - mock-oidc-server
       - mock-ssh-server
+
+networks:
+  default:
+    internal: true
