@@ -9,12 +9,13 @@ The following diagram shows the architecture of the integration test environment
 ```mermaid
 graph TD
     subgraph "Docker Compose"
-        A[devtests] --> B[headless-shell];
+        A[devtests] -->|DevTools Protocol| B["headless-shell (chrome)"];
         B -->|HTTPS| C[tlsproxy];
-        C --> D[photos-backend];
-        C --> E[mock-oidc-server];
-        C --> F[mock-ssh-server];
-        C --> G[sshterm];
+        A -->|HTTPS| C;
+        C -->|HTTP Backend| D[photos-backend];
+        C -->|Identity Provider| E[mock-oidc-server];
+        C -->|WebSocket| F[mock-ssh-server];
+        C -->|static content| G[sshterm];
     end
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
