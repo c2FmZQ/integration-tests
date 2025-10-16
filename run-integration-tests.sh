@@ -26,6 +26,7 @@ if [[ -n "${SSHTERM_BRANCH}" ]]; then
   (cd sshterm && git fetch && git switch --detach "${SSHTERM_BRANCH}")
 fi
 ./sshterm/build.sh
+cp -f ./testdata/sshterm-config.json ./sshterm/docroot/config.json
 
 export CGO_ENABLED=0
 (cd ./mock-oidc-server && go build -o mock-oidc-server .)

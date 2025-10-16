@@ -8,7 +8,6 @@ services:
       - ./testdata/tlsproxy-config.yaml:/config/config.yaml:ro
       - ./testdata:/html:ro
       - ./sshterm/docroot:/sshterm:ro
-      - ./testdata/sshterm-config.json:/sshterm/config.json:ro
       - type: tmpfs
         target: /tmp
         tmpfs:
