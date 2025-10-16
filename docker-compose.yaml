@@ -12,7 +12,7 @@ services:
       - type: tmpfs
         target: /tmp
         tmpfs:
-          size: 100M
+          size: 10M
           mode: 0o1777
     networks:
       default:
@@ -29,7 +29,7 @@ services:
       - type: tmpfs
         target: /tmp
         tmpfs:
-          size: 100M
+          size: 10M
           mode: 0o1777
     environment:
       - C2FMZQ_ADDRESS=:8080
@@ -45,7 +45,7 @@ services:
       - type: tmpfs
         target: /tmp
         tmpfs:
-          size: 100M
+          size: 10M
           mode: 0o1777
 
   mock-ssh-server:

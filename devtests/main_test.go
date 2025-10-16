@@ -119,7 +119,7 @@ func TestSSHTerm(t *testing.T) {
 	defer cancel()
 
 	// create a timeout
-	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	clearCookies(t, ctx)
