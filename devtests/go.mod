@@ -1,4 +1,4 @@
-module tests
+module devtests
 
 go 1.24.3
 

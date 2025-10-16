@@ -23,15 +23,15 @@ cp $(go env GOROOT)/lib/wasm/wasm_exec.js ./sshterm/docroot/
 export CGO_ENABLED=0
 (cd ./mock-oidc-server && go build -o mock-oidc-server .)
 (cd ./mock-ssh-server && go build -o mock-ssh-server .)
-(cd ./tests && go build -o integration-tests .)
+(cd ./devtests && go test -c -o integration-tests .)
 
 docker build -t c2fmzq/mock-oidc-server:integrationtest ./mock-oidc-server
 docker build -t c2fmzq/mock-ssh-server:integrationtest ./mock-ssh-server
-docker build -t c2fmzq/integration-tests:integrationtest ./tests
+docker build -t c2fmzq/integration-tests:integrationtest ./devtests
 
 docker compose -f ./docker-compose.yaml up \
   --abort-on-container-exit \
-  --exit-code-from=tests
+  --exit-code-from=devtests
 RES=$?
 docker compose -f ./docker-compose.yaml rm -f
 
