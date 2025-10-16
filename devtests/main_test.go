@@ -40,7 +40,11 @@ func TestHTTPS(t *testing.T) {
 			if err == nil && resp.StatusCode == h.code {
 				break
 			}
-			t.Logf("Waiting for %s", h.url)
+			var code int
+			if resp != nil {
+				code = resp.StatusCode
+			}
+			t.Logf("Waiting for %s [err:%v, code:%d]", h.url, err, code)
 			select {
 			case <-to:
 				t.Fatalf("not ready: %s", h.url)
