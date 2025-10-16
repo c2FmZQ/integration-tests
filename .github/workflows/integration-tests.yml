@@ -2,6 +2,19 @@ name: Integration Tests
 
 on:
   workflow_dispatch:
+    inputs:
+      tlsproxy_branch:
+        description: 'tlsproxy branch (default: main)'
+        required: false
+        type: string
+      photos_branch:
+        description: 'photos branch (default: main)'
+        required: false
+        type: string
+      sshterm_branch:
+        description: 'sshterm branch (default: main)'
+        required: false
+        type: string
   pull_request:
   push:
     branches:
@@ -25,4 +38,8 @@ jobs:
           go-version-file: 'devtests/go.mod'
 
       - name: Run integration tests
-        run: ./run-integration-tests.sh
+        run: |
+          export TLSPROXY_BRANCH="${{github.event.inputs.tlsproxy_branch}}"
+          export PHOTOS_BRANCH="${{github.event.inputs.photos_branch}}"
+          export SSHTERM_BRANCH="${{github.event.inputs.sshterm_branch}}"
+          ./run-integration-tests.sh
