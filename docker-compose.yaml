@@ -4,9 +4,6 @@ services:
     user: "1000:1000"
     hostname: tlsproxy.example.com
     command: "--use-ephemeral-certificate-manager"
-    ports:
-      - "8080:80"
-      - "8443:443"
     volumes:
       - ./testdata/tlsproxy-config.yaml:/config/config.yaml
       - ./testdata:/html
@@ -61,8 +58,6 @@ services:
   headless-shell:
     image: "chromedp/headless-shell:141.0.7390.37"
     user: "1000:1000"
-    ports:
-      - "9222:9222"
     command: [
       "--ignore-certificate-errors",
     ]
