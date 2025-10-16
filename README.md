@@ -13,8 +13,9 @@ graph TD
         B -->|HTTPS| C[tlsproxy];
         A -->|HTTPS| C;
         C -->|HTTP Backend| D[photos-backend];
-        C -->|Identity Provider| E[mock-oidc-server];
-        C -->|WebSocket| F[mock-ssh-server];
+        C -->|"OpenID Connect"| E[mock-oidc-server];
+        C -->|"WebSocket Proxy (TCP)"| F[mock-ssh-server];
+        F -->|"HTTPS (Get CA cert)"| C;
         C -->|static content| G[sshterm];
     end
 
