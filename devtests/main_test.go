@@ -132,10 +132,14 @@ func TestSSHTerm(t *testing.T) {
 		t.Fatalf("navigate(%s): %v", url, err)
 	}
 	var termContent string
-	want := "Hello bob@example.com"
-	// Poll for the terminal content to contain "hello"
-	for i := 0; i < 40; i++ {
-		t.Logf("poll %d", i)
+	for {
+		select {
+		case <-ctx.Done():
+			dumpPageContent(t, ctx)
+			t.Fatalf("Unexpected terminal content: %q", termContent)
+		case <-time.After(500 * time.Millisecond):
+		}
+
 		if err := chromedp.Run(ctx,
 			chromedp.Evaluate(`Array.from(document.querySelectorAll('div.xterm-rows>div')).map(x => x.textContent).join('\n')`, &termContent),
 		); err != nil {
@@ -143,15 +147,9 @@ func TestSSHTerm(t *testing.T) {
 			t.Fatalf("Failed to get terminal content: %v", err)
 		}
 		t.Logf("terminal content:\n%s", termContent)
-		if strings.Contains(termContent, want) {
-			break
+		if strings.Contains(termContent, "Hello bob@example.com") {
+			return
 		}
-		time.Sleep(500 * time.Millisecond)
-	}
-
-	if !strings.Contains(termContent, want) {
-		dumpPageContent(t, ctx)
-		t.Fatalf("Unexpected terminal content: %q", termContent)
 	}
 }
 
