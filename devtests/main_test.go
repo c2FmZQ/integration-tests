@@ -170,6 +170,7 @@ func TestECH(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
+	resp.Body.Close()
 	if got, want := resp.TLS.ECHAccepted, true; got != want {
 		t.Errorf("ECHAccepted = %v, want %v", got, want)
 	}
