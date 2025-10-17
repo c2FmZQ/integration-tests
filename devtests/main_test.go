@@ -136,7 +136,7 @@ func TestSSHTerm(t *testing.T) {
 		}
 
 		if err := chromedp.Run(ctx,
-			chromedp.Evaluate(`Array.from(document.querySelectorAll('div.xterm-rows>div')).map(x => x.textContent).join('\n')`, &termContent),
+			chromedp.Evaluate(`Array.from(document.querySelectorAll('div.xterm-rows>div')).map(x => x.textContent).join('\n').trim()`, &termContent),
 		); err != nil {
 			dumpPageContent(t, ctx)
 			t.Fatalf("Failed to get terminal content: %v", err)
