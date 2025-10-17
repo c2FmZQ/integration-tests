@@ -17,7 +17,7 @@ graph TD
         C -->|"WebSocket Proxy (TCP)"| F[mock-ssh-server];
         F -->|"HTTPS (Get CA cert)"| C;
         C -->|static content| G[sshterm];
-        C -->|HTTPS| H[mock-backend];
+        C -->|HTTPS Backend| H[mock-backend];
     end
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
