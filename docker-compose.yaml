@@ -74,6 +74,7 @@ services:
     command: [
       "-test.v",
       "-test.timeout=5m",
+      "-test.failfast",
     ]
     volumes:
       - ./testdata:/testdata:ro
