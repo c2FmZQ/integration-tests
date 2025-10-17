@@ -20,6 +20,7 @@ backends:
       - "www.example.com"
     mode: "local"
     documentRoot: "/html"
+    exportJwks: "/jwks"
     sso:
       provider: "mock-oidc"
       rules:
@@ -35,6 +36,15 @@ backends:
     documentRoot: "/sshterm"
     sso:
       provider: "mock-oidc"
+  - serverNames:
+      - "mock-backend.example.com"
+    mode: "https"
+    addresses:
+      - "mock-backend-internal:8443"
+    insecureSkipVerify: true
+    sso:
+      provider: "mock-oidc"
+      generateIdTokens: true
 sshCertificateAuthorities:
   - name: "TEST SSH CA"
     keyType: ecdsa-p256

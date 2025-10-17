@@ -17,6 +17,7 @@ graph TD
         C -->|"WebSocket Proxy (TCP)"| F[mock-ssh-server];
         F -->|"HTTPS (Get CA cert)"| C;
         C -->|static content| G[sshterm];
+        C -->|HTTPS Backend| H[mock-backend];
     end
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
@@ -26,6 +27,7 @@ graph TD
     style E fill:#ffc,stroke:#333,stroke-width:2px
     style F fill:#ffc,stroke:#333,stroke-width:2px
     style G fill:#ffc,stroke:#333,stroke-width:2px
+    style H fill:#ffc,stroke:#333,stroke-width:2px
 ```
 
 The services are:
@@ -37,6 +39,7 @@ The services are:
 *   **`mock-oidc-server`**: A mock OIDC server for testing authentication.
 *   **`mock-ssh-server`**: A mock SSH server for testing `sshterm`.
 *   **`sshterm`**: A web-based SSH terminal, served as static content by the `tlsproxy` service.
+*   **`mock-backend`**: A mock backend running TLSPROXY's example backend.
 
 ## Tests
 

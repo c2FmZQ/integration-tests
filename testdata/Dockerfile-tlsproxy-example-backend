@@ -1,0 +1,4 @@
+FROM scratch
+WORKDIR /
+COPY backend .
+CMD ["/backend"]
