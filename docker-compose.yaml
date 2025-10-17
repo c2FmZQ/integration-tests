@@ -19,6 +19,7 @@ services:
           - www.example.com
           - photos.example.com
           - ssh.example.com
+          - mock-backend.example.com
 
   photos-backend:
     image: c2fmzq/c2fmzq-server:integrationtest
@@ -53,6 +54,13 @@ services:
     hostname: mock-ssh-server.example.com
     volumes:
       - ./testdata/mock_ssh_server_key:/mock_ssh_server_key:ro
+
+  mock-backend-internal:
+    image: c2fmzq/mock-backend:integrationtest
+    user: "1000:1000"
+    command: [
+      "/backend", "--addr=:8443", "--jwks-url=https://www.example.com/jwks", "--allow-insecure-jwks-url",
+    ]
 
   headless-shell:
     image: "chromedp/headless-shell:141.0.7390.37"

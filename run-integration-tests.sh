@@ -9,6 +9,7 @@ if [[ -n "${TLSPROXY_BRANCH}" ]]; then
   (cd tlsproxy && git fetch && git switch --detach "${TLSPROXY_BRANCH}")
 fi
 touch tlsproxy/version.sh
+cp -f testdata/Dockerfile-tlsproxy-example-backend tlsproxy/examples/backend/Dockerfile
 docker build -t c2fmzq/tlsproxy:integrationtest ./tlsproxy
 
 if [[ ! -f "photos/Dockerfile" ]]; then
@@ -31,10 +32,12 @@ cp -f ./testdata/sshterm-config.json ./sshterm/docroot/config.json
 export CGO_ENABLED=0
 (cd ./mock-oidc-server && go build -o mock-oidc-server .)
 (cd ./mock-ssh-server && go build -o mock-ssh-server .)
+(cd ./tlsproxy/examples/backend && go build -o backend .)
 (cd ./devtests && go test -c -o integration-tests .)
 
 docker build -t c2fmzq/mock-oidc-server:integrationtest ./mock-oidc-server
 docker build -t c2fmzq/mock-ssh-server:integrationtest ./mock-ssh-server
+docker build -t c2fmzq/mock-backend:integrationtest ./tlsproxy/examples/backend
 docker build -t c2fmzq/integration-tests:integrationtest ./devtests
 
 docker compose -f ./docker-compose.yaml up \

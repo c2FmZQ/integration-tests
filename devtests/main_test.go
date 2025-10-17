@@ -24,6 +24,7 @@ func TestHTTPS(t *testing.T) {
 		{"https://www.example.com/foo/", 403},
 		{"https://ssh.example.com", 403},
 		{"https://photos.example.com", 200},
+		{"https://mock-backend.example.com", 403},
 	} {
 		for {
 			resp, err := client.Get(h.url)
@@ -162,6 +163,7 @@ func TestSSO(t *testing.T) {
 	navigateContains(t, ctx, "", "https://www.example.com/", "Hello")
 	navigateContains(t, ctx, id, "https://www.example.com/foo/", "sso only")
 	navigateContains(t, ctx, id, "https://www.example.com/.sso/", id)
+	navigateContains(t, ctx, id, "https://mock-backend.example.com/", id)
 }
 
 func TestECH(t *testing.T) {
