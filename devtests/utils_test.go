@@ -17,17 +17,17 @@ import (
 )
 
 // httpClient returns an http.Client that's configured to trust tlsproxy's
-// current ephemeral certificate authority. This is safefor testing. Don't do
+// current ephemeral certificate authority. This is safe for testing. Don't do
 // this in prod.
 func httpClient(t *testing.T) *http.Client {
+	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
 	pool := x509.NewCertPool()
 	for {
-		c, err := tls.Dial("tcp", "www.example.com:443", &tls.Config{
+		if c, err := tls.Dial("tcp", "www.example.com:443", &tls.Config{
 			InsecureSkipVerify: true,
-		})
-		if err == nil {
+		}); err == nil {
 			pc := c.ConnectionState().PeerCertificates
 			pool.AddCert(pc[len(pc)-1])
 			c.Close()
@@ -52,6 +52,7 @@ func httpClient(t *testing.T) *http.Client {
 // current ephemeral certificate authority, and that can use Encrypted Client
 // Hello with tlsproxy.
 func httpClientECH(t *testing.T) *http.Client {
+	t.Helper()
 	client := httpClient(t)
 	resp, err := client.Get("https://www.example.com/.ech")
 	if err != nil {
