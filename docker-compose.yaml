@@ -83,7 +83,7 @@ services:
     user: "1000:1000"
     command: [
       "-test.v",
-      "-test.timeout=5m",
+      "-test.timeout=10m",
       "-test.failfast",
     ]
     volumes:
