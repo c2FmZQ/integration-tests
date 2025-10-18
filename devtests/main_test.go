@@ -119,17 +119,10 @@ func TestPhotos(t *testing.T) {
 		chromedp.SendKeys(`input[name=server]`, "https://photos.example.com/", chromedp.ByQuery),
 		chromedp.Click(`#login-button`, chromedp.ByQuery),
 
-		chromedp.WaitVisible(`#gallery`, chromedp.ByQuery),
+		chromedp.WaitVisible(`#gallery img[alt="test.jpg"]`, chromedp.ByQuery),
 	); err != nil {
 		dumpPageContent(t, ctx)
 		t.Fatalf("Login: %v", err)
-	}
-
-	if err := chromedp.Run(ctx,
-		chromedp.WaitVisible(`img[alt="test.jpg"]`, chromedp.ByQuery),
-	); err != nil {
-		dumpPageContent(t, ctx)
-		t.Fatalf("File visible: %v", err)
 	}
 }
 
