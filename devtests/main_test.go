@@ -24,6 +24,7 @@ func TestHTTPS(t *testing.T) {
 		{"https://www.example.com/foo/", 403},
 		{"https://ssh.example.com", 403},
 		{"https://photos.example.com", 200},
+		{"https://c2fmzq.org", 200},
 		{"https://mock-backend.example.com", 403},
 	} {
 		for {
@@ -102,6 +103,33 @@ func TestPhotos(t *testing.T) {
 	); err != nil {
 		dumpPageContent(t, ctx)
 		t.Fatalf("Upload file: %v", err)
+	}
+
+	// Now, login through c2fmzq.org
+	if err := chromedp.Run(ctx,
+		chromedp.Navigate(`https://c2fmzq.org/pwa`),
+		chromedp.WaitVisible(`#passphrase-input`, chromedp.ByQuery),
+		chromedp.SendKeys(`#passphrase-input`, "foo", chromedp.ByQuery),
+		chromedp.SendKeys(`#passphrase-input2`, "foo", chromedp.ByQuery),
+		chromedp.Click(`#set-passphrase-button`, chromedp.ByQuery),
+
+		chromedp.WaitVisible(`input[name=email]`, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name=email]`, username, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name=password]`, password, chromedp.ByQuery),
+		chromedp.SendKeys(`input[name=server]`, "https://photos.example.com/", chromedp.ByQuery),
+		chromedp.Click(`#login-button`, chromedp.ByQuery),
+
+		chromedp.WaitVisible(`#gallery`, chromedp.ByQuery),
+	); err != nil {
+		dumpPageContent(t, ctx)
+		t.Fatalf("Login: %v", err)
+	}
+
+	if err := chromedp.Run(ctx,
+		chromedp.WaitVisible(`img[alt="test.jpg"]`, chromedp.ByQuery),
+	); err != nil {
+		dumpPageContent(t, ctx)
+		t.Fatalf("File visible: %v", err)
 	}
 }
 
