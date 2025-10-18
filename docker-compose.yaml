@@ -6,7 +6,8 @@ services:
     command: "--use-ephemeral-certificate-manager"
     volumes:
       - ./testdata/tlsproxy-config.yaml:/config/config.yaml:ro
-      - ./testdata:/html:ro
+      - ./testdata/html:/html:ro
+      - ./testdata/secure:/secure:ro
       - ./sshterm/docroot:/sshterm:ro
       - ./c2fmzq.org:/c2fmzq.org:ro
       - type: tmpfs
@@ -22,6 +23,8 @@ services:
           - c2fmzq.org
           - ssh.example.com
           - mock-backend.example.com
+          - pki.example.com
+          - secure.example.com
 
   photos-backend:
     image: c2fmzq/c2fmzq-server:integrationtest
@@ -75,8 +78,9 @@ services:
         target: /nonexistent
         tmpfs:
           size: 10M
-          mode: 0o777
+          mode: 0o1777
       - ./testdata/test.jpg:/test.jpg
+      - download:/download
 
   devtests:
     image: c2fmzq/integration-tests:integrationtest
@@ -88,6 +92,7 @@ services:
     ]
     volumes:
       - ./testdata:/testdata:ro
+      - download:/download
       - ./output:/output
     depends_on:
       - tlsproxy
@@ -99,3 +104,11 @@ services:
 networks:
   default:
     internal: true
+
+volumes:
+  download:
+    driver: local
+    driver_opts:
+      type: "tmpfs"
+      device: "tmpfs"
+      o: "size=10M,uid=1000"

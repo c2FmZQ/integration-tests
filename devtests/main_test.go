@@ -26,6 +26,7 @@ func TestHTTPS(t *testing.T) {
 		{"https://photos.example.com", 200},
 		{"https://c2fmzq.org", 200},
 		{"https://mock-backend.example.com", 403},
+		{"https://pki.example.com", 403},
 	} {
 		for {
 			resp, err := client.Get(h.url)
