@@ -13,11 +13,13 @@ graph TD
         B -->|HTTPS| C[tlsproxy];
         A -->|HTTPS| C;
         C -->|HTTP Backend| D[photos-backend];
-        C -->|"OpenID Connect"| E[mock-oidc-server];
-        C -->|"WebSocket Proxy (TCP)"| F[mock-ssh-server];
-        F -->|"HTTPS (Get CA cert)"| C;
-        C -->|static content| G[sshterm];
-        C -->|HTTPS Backend| H[mock-backend];
+        C -->|static content| E[c2fmzq.org];
+        C -->|"OpenID Connect"| F[mock-oidc-server];
+        C -->|"WebSocket Proxy (TCP)"| G[mock-ssh-server];
+        G -->|"HTTPS (Get CA cert)"| C;
+        C -->|static content| H[sshterm];
+        C -->|HTTPS Backend| I[mock-backend];
+        I -->|"HTTPS (Get JWKS)"| C
     end
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
@@ -28,6 +30,7 @@ graph TD
     style F fill:#ffc,stroke:#333,stroke-width:2px
     style G fill:#ffc,stroke:#333,stroke-width:2px
     style H fill:#ffc,stroke:#333,stroke-width:2px
+    style I fill:#ffc,stroke:#333,stroke-width:2px
 ```
 
 The services are:
@@ -36,6 +39,7 @@ The services are:
 *   **`headless-shell`**: A headless Chrome browser used to perform UI tests.
 *   **`tlsproxy`**: A TLS proxy that provides HTTPS termination, OIDC authentication, and routing to the backend services.
 *   **`photos-backend`**: The backend for the photos application.
+*   **`c2fmzq.org`**: The c2fmzq.org website, served as static content.
 *   **`mock-oidc-server`**: A mock OIDC server for testing authentication.
 *   **`mock-ssh-server`**: A mock SSH server for testing `sshterm`.
 *   **`sshterm`**: A web-based SSH terminal, served as static content by the `tlsproxy` service.

@@ -15,6 +15,10 @@ on:
         description: 'sshterm branch (default: main)'
         required: false
         type: string
+      website_branch:
+        description: 'c2fmzq.github.io branch (default: main)'
+        required: false
+        type: string
   pull_request:
   push:
     branches:
@@ -42,4 +46,5 @@ jobs:
           export TLSPROXY_BRANCH="${{github.event.inputs.tlsproxy_branch}}"
           export PHOTOS_BRANCH="${{github.event.inputs.photos_branch}}"
           export SSHTERM_BRANCH="${{github.event.inputs.sshterm_branch}}"
+          export WEBSITE_BRANCH="${{github.event.inputs.website_branch}}"
           ./run-integration-tests.sh
