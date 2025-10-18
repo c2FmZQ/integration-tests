@@ -8,6 +8,7 @@ services:
       - ./testdata/tlsproxy-config.yaml:/config/config.yaml:ro
       - ./testdata:/html:ro
       - ./sshterm/docroot:/sshterm:ro
+      - ./c2fmzq.org:/c2fmzq.org:ro
       - type: tmpfs
         target: /tmp
         tmpfs:
@@ -18,6 +19,7 @@ services:
         aliases:
           - www.example.com
           - photos.example.com
+          - c2fmzq.org
           - ssh.example.com
           - mock-backend.example.com
 
@@ -81,7 +83,7 @@ services:
     user: "1000:1000"
     command: [
       "-test.v",
-      "-test.timeout=5m",
+      "-test.timeout=10m",
       "-test.failfast",
     ]
     volumes:

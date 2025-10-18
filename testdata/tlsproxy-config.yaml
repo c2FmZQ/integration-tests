@@ -31,6 +31,10 @@ backends:
     addresses:
       - "photos-backend:8080"
   - serverNames:
+      - "c2fmzq.org"
+    mode: "local"
+    documentRoot: "/c2fmzq.org"
+  - serverNames:
       - "ssh.example.com"
     mode: "local"
     documentRoot: "/sshterm"

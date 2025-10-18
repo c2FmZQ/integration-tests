@@ -29,6 +29,13 @@ fi
 ./sshterm/build.sh
 cp -f ./testdata/sshterm-config.json ./sshterm/docroot/config.json
 
+if [[ ! -f "c2fmzq.org/index.html" ]]; then
+  git clone https://github.com/c2fmzq/c2FmZQ.github.io.git c2fmzq.org
+fi
+if [[ -n "${WEBSITE_BRANCH}" ]]; then
+  (cd c2fmzq.org && git fetch && git switch --detach "${WEBSITE_BRANCH}")
+fi
+
 export CGO_ENABLED=0
 (cd ./mock-oidc-server && go build -o mock-oidc-server .)
 (cd ./mock-ssh-server && go build -o mock-ssh-server .)
