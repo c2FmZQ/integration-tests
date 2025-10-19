@@ -49,6 +49,20 @@ backends:
     sso:
       provider: "mock-oidc"
       generateIdTokens: true
+  - serverNames:
+      - "pki.example.com"
+    mode: "local"
+    sso:
+      forceReAuth: 15m
+      provider: "mock-oidc"
+  - serverNames:
+      - "secure.example.com"
+    mode: "local"
+    clientAuth:
+      rootCAs: "INTEGRATION TEST CA"
+      acl:
+        - "SUBJECT:CN=alice@example.com::test"
+    documentRoot: "/secure"
 sshCertificateAuthorities:
   - name: "TEST SSH CA"
     keyType: ecdsa-p256
@@ -57,3 +71,13 @@ sshCertificateAuthorities:
 webSockets:
   - endpoint: "wss://ssh.example.com/ws"
     address: "mock-ssh-server.example.com:2222"
+pki:
+- name: "INTEGRATION TEST CA"
+  keyType: ecdsa-p256
+  endpoint: https://pki.example.com/manage
+  issuingCertificateUrls:
+  - https://www.example.com/pki/ca.pem
+  crlDistributionPoints:
+  - https://www.example.com/pki/crl
+  ocspServers:
+  - https://www.example.com/pki/ocsp
