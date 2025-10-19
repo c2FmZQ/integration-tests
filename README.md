@@ -9,28 +9,45 @@ The following diagram shows the architecture of the integration test environment
 ```mermaid
 graph TD
     subgraph "Docker Compose"
-        A[devtests] -->|DevTools Protocol| B["headless-shell (chrome)"];
-        B -->|HTTPS| C[tlsproxy];
-        A -->|HTTPS| C;
-        C -->|HTTP Backend| D[photos-backend];
-        C -->|static content| E[c2fmzq.org];
-        C -->|"OpenID Connect"| F[mock-oidc-server];
-        C -->|"WebSocket Proxy (TCP)"| G[mock-ssh-server];
-        G -->|"HTTPS (Get CA cert)"| C;
-        C -->|static content| H[sshterm];
-        C -->|HTTPS Backend| I[mock-backend];
-        I -->|"HTTPS (Get JWKS)"| C
+        A[devtests]
+        B["headless-shell (chrome)"];
+        P((tlsproxy));
+        subgraph "External Services"
+            S1[mock-oidc-server];
+            S2[mock-ssh-server];
+        end
+        subgraph "Backends"
+            B1[photos-backend];
+            B2[c2fmzq.org];
+            B3[sshterm];
+            B4[mock-backend];
+            B5[pki]
+        end
     end
 
+    A -->|DevTools Protocol| B;
+    B -->|HTTPS| P;
+    A -->|HTTPS| P;
+    P -->|"OpenID Connect"| S1;
+    P -->|"WebSocket Proxy (TCP)"| S2;
+    S2 -->|"HTTPS (Get CA cert)"| P;
+    P -->|HTTP Backend| B1;
+    P -->|static content| B2;
+    P -->|static content| B3;
+    P -->|HTTPS Backend| B4;
+    B4 -->|"HTTPS (Get JWKS)"| P
+    P -->|Local Backend| B5;
+
+    style S1 fill:#eee,stroke:#333,stroke-width:2px
+    style S2 fill:#eee,stroke:#333,stroke-width:2px
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#ccf,stroke:#333,stroke-width:2px
-    style C fill:#cfc,stroke:#333,stroke-width:2px
-    style D fill:#ffc,stroke:#333,stroke-width:2px
-    style E fill:#ffc,stroke:#333,stroke-width:2px
-    style F fill:#ffc,stroke:#333,stroke-width:2px
-    style G fill:#ffc,stroke:#333,stroke-width:2px
-    style H fill:#ffc,stroke:#333,stroke-width:2px
-    style I fill:#ffc,stroke:#333,stroke-width:2px
+    style P fill:#cfc,stroke:#333,stroke-width:2px
+    style B1 fill:#ffc,stroke:#333,stroke-width:2px
+    style B2 fill:#ffc,stroke:#333,stroke-width:2px
+    style B3 fill:#ffc,stroke:#333,stroke-width:2px
+    style B4 fill:#ffc,stroke:#333,stroke-width:2px
+    style B5 fill:#ffc,stroke:#333,stroke-width:2px
 ```
 
 The services are:
@@ -38,10 +55,10 @@ The services are:
 *   **`devtests`**: The main test container that runs the integration tests written in Go.
 *   **`headless-shell`**: A headless Chrome browser used to perform UI tests.
 *   **`tlsproxy`**: A TLS proxy that provides HTTPS termination, OIDC authentication, and routing to the backend services.
-*   **`photos-backend`**: The backend for the photos application.
-*   **`c2fmzq.org`**: The c2fmzq.org website, served as static content.
 *   **`mock-oidc-server`**: A mock OIDC server for testing authentication.
 *   **`mock-ssh-server`**: A mock SSH server for testing `sshterm`.
+*   **`photos-backend`**: The backend for the photos application.
+*   **`c2fmzq.org`**: The c2fmzq.org website, served as static content.
 *   **`sshterm`**: A web-based SSH terminal, served as static content by the `tlsproxy` service.
 *   **`mock-backend`**: A mock backend running TLSPROXY's example backend.
 
