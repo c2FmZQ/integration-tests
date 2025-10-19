@@ -3,7 +3,6 @@ package integration_test
 import (
 	"context"
 	"crypto/tls"
-	"crypto/x509"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -16,45 +15,12 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-// httpClient returns an http.Client that's configured to trust tlsproxy's
-// current ephemeral certificate authority. This is safe for testing. Don't do
-// this in prod.
-func httpClient(t *testing.T) *http.Client {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
-	defer cancel()
-	pool := x509.NewCertPool()
-	for {
-		if c, err := tls.Dial("tcp", "www.example.com:443", &tls.Config{
-			InsecureSkipVerify: true,
-		}); err == nil {
-			pc := c.ConnectionState().PeerCertificates
-			pool.AddCert(pc[len(pc)-1])
-			c.Close()
-			break
-		}
-		select {
-		case <-ctx.Done():
-			t.Fatalf("httpClient: %v", ctx.Err())
-		case <-time.After(100 * time.Millisecond):
-		}
-	}
-	return &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				RootCAs: pool,
-			},
-		},
-	}
-}
-
 // httpClientECH return an http.Client that's configured to trust tlsproxy's
 // current ephemeral certificate authority, and that can use Encrypted Client
 // Hello with tlsproxy.
 func httpClientECH(t *testing.T) *http.Client {
 	t.Helper()
-	client := httpClient(t)
-	resp, err := client.Get("https://www.example.com/.ech")
+	resp, err := http.Get("https://www.example.com/.ech")
 	if err != nil {
 		t.Fatalf("ech: %v", err)
 	}
@@ -67,7 +33,13 @@ func httpClientECH(t *testing.T) *http.Client {
 	if err != nil {
 		t.Fatalf("ech decode: %v", err)
 	}
-	client.Transport.(*http.Transport).TLSClientConfig.EncryptedClientHelloConfigList = ech
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				EncryptedClientHelloConfigList: ech,
+			},
+		},
+	}
 	return client
 }
 

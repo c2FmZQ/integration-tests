@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
@@ -23,13 +22,7 @@ func main() {
 			}
 
 			caURL := "https://ssh.example.com/ssh/ca"
-			client := &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						InsecureSkipVerify: true,
-					},
-				},
-			}
+			client := &http.Client{}
 			resp, err := client.Get(caURL)
 			if err != nil {
 				log.Printf("PublicKeyCallback: GET %s: %v", caURL, err)

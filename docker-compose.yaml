@@ -4,7 +4,10 @@ services:
     user: "1000:1000"
     hostname: tlsproxy.example.com
     command: "--use-ephemeral-certificate-manager"
+    environment:
+      - CERTMANAGER_STATE_FILE=/etc/ssl/certs/ca-certificates.crt
     volumes:
+      - tls:/etc/ssl/certs
       - ./testdata/tlsproxy-config.yaml:/config/config.yaml:ro
       - ./testdata/html:/html:ro
       - ./testdata/secure:/secure:ro
@@ -58,14 +61,19 @@ services:
     user: "1000:1000"
     hostname: mock-ssh-server.example.com
     volumes:
+      - tls:/etc/ssl/certs:ro
       - ./testdata/mock_ssh_server_key:/mock_ssh_server_key:ro
 
   mock-backend-internal:
     image: c2fmzq/mock-backend:integrationtest
     user: "1000:1000"
     command: [
-      "/backend", "--addr=:8443", "--jwks-url=https://www.example.com/jwks", "--allow-insecure-jwks-url",
+      "/backend", "--addr=:8443", "--jwks-url=https://www.example.com/jwks",
     ]
+    volumes:
+      - tls:/etc/ssl/certs:ro
+    depends_on:
+      - tlsproxy
 
   headless-shell:
     image: "chromedp/headless-shell:141.0.7390.37"
@@ -81,6 +89,8 @@ services:
           mode: 0o1777
       - ./testdata/test.jpg:/test.jpg
       - download:/download
+    depends_on:
+      - tlsproxy
 
   devtests:
     image: c2fmzq/integration-tests:integrationtest
@@ -92,6 +102,7 @@ services:
     ]
     volumes:
       - ./testdata:/testdata:ro
+      - tls:/etc/ssl/certs:ro
       - download:/download
       - ./output:/output
     depends_on:
@@ -107,6 +118,12 @@ networks:
 
 volumes:
   download:
+    driver: local
+    driver_opts:
+      type: "tmpfs"
+      device: "tmpfs"
+      o: "size=10M,uid=1000"
+  tls:
     driver: local
     driver_opts:
       type: "tmpfs"
