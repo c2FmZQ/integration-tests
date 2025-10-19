@@ -1,11 +1,21 @@
 services:
+  inmemory-acme-server:
+    image: c2fmzq/inmemory-acme-server:integrationtest
+    user: "1000:1000"
+    hostname: acme-v02.api.letsencrypt.org
+    volumes:
+      - tls:/etc/ssl/certs
+    healthcheck:
+      test: ["CMD", "/inmemory-acme-server", "--ready"]
+      interval: 5s
+      retries: 5
+      start_period: 5s
+
   tlsproxy:
     image: c2fmzq/tlsproxy:integrationtest
     user: "1000:1000"
     hostname: tlsproxy.example.com
-    command: "--use-ephemeral-certificate-manager"
-    environment:
-      - CERTMANAGER_STATE_FILE=/etc/ssl/certs/ca-certificates.crt
+    command: "--passphrase=test"
     volumes:
       - tls:/etc/ssl/certs
       - ./testdata/tlsproxy-config.yaml:/config/config.yaml:ro
@@ -28,6 +38,9 @@ services:
           - mock-backend.example.com
           - pki.example.com
           - secure.example.com
+    depends_on:
+      inmemory-acme-server:
+        condition: service_healthy
 
   photos-backend:
     image: c2fmzq/c2fmzq-server:integrationtest

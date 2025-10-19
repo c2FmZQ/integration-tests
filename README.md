@@ -15,6 +15,7 @@ graph TD
         subgraph "External Services"
             S1[mock-oidc-server];
             S2[mock-ssh-server];
+            S3[mock-acme-server];
         end
         subgraph "Backends"
             B1[photos-backend];
@@ -30,6 +31,7 @@ graph TD
     A -->|HTTPS| P;
     P -->|"OpenID Connect"| S1;
     P -->|"WebSocket Proxy (TCP)"| S2;
+    P -->|"ACME"| S3;
     S2 -->|"HTTPS (Get CA cert)"| P;
     P -->|HTTP Backend| B1;
     P -->|static content| B2;
@@ -40,6 +42,7 @@ graph TD
 
     style S1 fill:#eee,stroke:#333,stroke-width:2px
     style S2 fill:#eee,stroke:#333,stroke-width:2px
+    style S3 fill:#eee,stroke:#333,stroke-width:2px
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#ccf,stroke:#333,stroke-width:2px
     style P fill:#cfc,stroke:#333,stroke-width:2px
@@ -57,6 +60,7 @@ The services are:
 *   **`tlsproxy`**: A TLS proxy that provides HTTPS termination, OIDC authentication, and routing to the backend services.
 *   **`mock-oidc-server`**: A mock OIDC server for testing authentication.
 *   **`mock-ssh-server`**: A mock SSH server for testing `sshterm`.
+*   **`mock-acme-server`**: A mock ACME server for testing certificate issuance.
 *   **`photos-backend`**: The backend for the photos application.
 *   **`c2fmzq.org`**: The c2fmzq.org website, served as static content.
 *   **`sshterm`**: A web-based SSH terminal, served as static content by the `tlsproxy` service.
