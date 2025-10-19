@@ -52,7 +52,7 @@ The integration test suite includes the following tests:
 *   **Photos**: Creates a new user account in the photos application, logs in, and uploads a JPG image.
 *   **SSO**: Verifies the Single Sign-On (SSO) flow with the mock OIDC server.
 *   **SSHTerm**: Navigates to the `sshterm` page, generates a new SSH key, obtains a certificate from an SSH Certificate Authority, and connects to the mock SSH server.
-*   **PKI**: Navigate to the PKI endpoint, generate a new X.509 key and certificate, and use them for client authentication.
+*   **PKI**: Navigates to the PKI endpoint, generates a new X.509 key and certificate, and uses them for client authentication.
 
 ## Prerequisites
 
