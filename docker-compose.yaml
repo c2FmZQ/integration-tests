@@ -89,8 +89,6 @@ services:
           mode: 0o1777
       - ./testdata/test.jpg:/test.jpg
       - download:/download
-    depends_on:
-      - tlsproxy
 
   devtests:
     image: c2fmzq/integration-tests:integrationtest
