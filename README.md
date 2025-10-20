@@ -13,9 +13,9 @@ graph TD
         B["headless-shell (chrome)"];
         P((tlsproxy));
         subgraph "External Services"
-            S1[mock-oidc-server];
-            S2[mock-ssh-server];
-            S3[mock-acme-server];
+            S1[acme-server];
+            S2[mock-oidc-server];
+            S3[mock-ssh-server];
         end
         subgraph "Backends"
             B1[photos-backend];
@@ -60,7 +60,7 @@ The services are:
 *   **`tlsproxy`**: A TLS proxy that provides HTTPS termination, OIDC authentication, and routing to the backend services.
 *   **`mock-oidc-server`**: A mock OIDC server for testing authentication.
 *   **`mock-ssh-server`**: A mock SSH server for testing `sshterm`.
-*   **`mock-acme-server`**: A mock ACME server for testing certificate issuance.
+*   **`acme-server`**: An in-memory ACME server for testing certificate issuance.
 *   **`photos-backend`**: The backend for the photos application.
 *   **`c2fmzq.org`**: The c2fmzq.org website, served as static content.
 *   **`sshterm`**: A web-based SSH terminal, served as static content by the `tlsproxy` service.

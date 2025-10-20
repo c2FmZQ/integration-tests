@@ -1,15 +1,16 @@
 services:
-  inmemory-acme-server:
+  acme-server:
     image: c2fmzq/inmemory-acme-server:integrationtest
     user: "1000:1000"
     hostname: acme-v02.api.letsencrypt.org
+    command: "--cert-file=/etc/ssl/certs/root-ca.pem"
     volumes:
       - tls:/etc/ssl/certs
     healthcheck:
-      test: ["CMD", "/inmemory-acme-server", "--ready"]
+      test: ["CMD", "/inmemory-acme-server", "--ready", "--cert-file=/etc/ssl/certs/root-ca.pem"]
       interval: 5s
       retries: 5
-      start_period: 5s
+      start_period: 1s
 
   tlsproxy:
     image: c2fmzq/tlsproxy:integrationtest
@@ -39,7 +40,7 @@ services:
           - pki.example.com
           - secure.example.com
     depends_on:
-      inmemory-acme-server:
+      acme-server:
         condition: service_healthy
 
   photos-backend:
@@ -76,6 +77,9 @@ services:
     volumes:
       - tls:/etc/ssl/certs:ro
       - ./testdata/mock_ssh_server_key:/mock_ssh_server_key:ro
+    depends_on:
+      acme-server:
+        condition: service_healthy
 
   mock-backend-internal:
     image: c2fmzq/mock-backend:integrationtest
@@ -86,7 +90,10 @@ services:
     volumes:
       - tls:/etc/ssl/certs:ro
     depends_on:
-      - tlsproxy
+      tlsproxy:
+        condition: service_started
+      acme-server:
+        condition: service_healthy
 
   headless-shell:
     image: "chromedp/headless-shell:141.0.7390.37"
@@ -117,11 +124,18 @@ services:
       - download:/download
       - ./output:/output
     depends_on:
-      - tlsproxy
-      - photos-backend
-      - headless-shell
-      - mock-oidc-server
-      - mock-ssh-server
+      acme-server:
+        condition: service_healthy
+      tlsproxy:
+        condition: service_started
+      photos-backend:
+        condition: service_started
+      headless-shell:
+        condition: service_started
+      mock-oidc-server:
+        condition: service_started
+      mock-ssh-server:
+        condition: service_started
 
 networks:
   default:
