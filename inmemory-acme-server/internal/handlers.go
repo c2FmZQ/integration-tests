@@ -206,29 +206,21 @@ func (s *InMemoryACMEServer) postChallenge(w http.ResponseWriter, r *http.Reques
 	}
 
 	var account *acmeAccount
-	for _, acc := range s.accounts {
-		for _, order := range s.orders {
-			if order.AccountID == acc.ID {
-				for _, authzURL := range order.Authorizations {
-					if strings.Contains(authzURL, authz.ID) {
-						account = acc
-						break
-					}
-				}
-			}
-			if account != nil {
-				break
-			}
+	if jws.Signatures[0].Header.KeyID != "" {
+		accountID := strings.TrimPrefix(jws.Signatures[0].Header.KeyID, fmt.Sprintf("https://%s:%d/acme/acct/", s.publicName, s.port))
+		var ok bool
+		account, ok = s.accounts[accountID]
+		if !ok {
+			http.Error(w, "account not found", http.StatusNotFound)
+			return
 		}
-		if account != nil {
-			break
+	} else {
+		// If KeyID is not present, try to find account by JWK
+		account = s.findAccountByKey(jws.Signatures[0].Header.JSONWebKey)
+		if account == nil {
+			http.Error(w, "account not found", http.StatusNotFound)
+			return
 		}
-	}
-
-	if account == nil {
-		log.Print("postChallenge: account not found for authorization")
-		http.Error(w, "account not found for authorization", http.StatusInternalServerError)
-		return
 	}
 
 	_, err = jws.Verify(account.Key)
