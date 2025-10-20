@@ -56,7 +56,7 @@ func issueCertificate(csr *x509.CertificateRequest, caCert *x509.Certificate, ca
 func generateCA() (*x509.Certificate, *rsa.PrivateKey, error) {
 	// This function generates a self-signed CA certificate for the mock ACME server.
 	// While not directly specified in RFC 8555, a CA is a prerequisite for issuing certificates.
-	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	caPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -95,7 +95,7 @@ func generateCA() (*x509.Certificate, *rsa.PrivateKey, error) {
 func generateServerCert(caCert *x509.Certificate, caKey *rsa.PrivateKey, name string) (*x509.Certificate, *rsa.PrivateKey, error) {
 	// This function generates a server certificate signed by the mock CA.
 	// While not directly specified in RFC 8555, a server certificate is needed for the HTTPS server.
-	certPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	certPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return nil, nil, err
 	}
