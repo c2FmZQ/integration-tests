@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"gopkg.in/square/go-jose.v2"
@@ -32,11 +33,7 @@ func (s *InMemoryACMEServer) validateChallenge(challenge *acmeChallenge, authzID
 func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge, authzID string, identifierValue string, accountKey *jose.JSONWebKey) {
 	expectedKeyAuth, err := s.keyAuthorization(challenge.Token, accountKey)
 	if err != nil {
-		s.mu.Lock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:serverInternal", Detail: fmt.Sprintf("failed to generate key authorization: %v", err)}
-		s.mu.Unlock()
-		log.Printf("TLS-ALPN-01 challenge for %s failed: %v", identifierValue, err)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:serverInternal", "failed to generate key authorization: %v", err)
 		return
 	}
 
@@ -55,11 +52,7 @@ func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge
 	conn, err := tls.DialWithDialer(dialer, "tcp", addr, config)
 	log.Printf("tls-alpn-01 challenge for %s: tls dial done", identifierValue)
 	if err != nil {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:connection", Detail: fmt.Sprintf("failed to connect to client: %v", err)}
-		log.Printf("TLS-ALPN-01 challenge for %s failed: %v", identifierValue, err)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:connection", "failed to connect to client: %v", err)
 		return
 	}
 	defer conn.Close()
@@ -67,22 +60,14 @@ func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge
 	// Verify the certificate presented by the server.
 	certs := conn.ConnectionState().PeerCertificates
 	if len(certs) == 0 {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: "no certificate presented"}
-		log.Printf("TLS-ALPN-01 challenge for %s failed: no certificate presented", identifierValue)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:unauthorized", "no certificate presented")
 		return
 	}
 	cert := certs[0]
 
 	// The certificate must be self-signed.
 	if cert.Issuer.String() != cert.Subject.String() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: "certificate not self-signed"}
-		log.Printf("TLS-ALPN-01 challenge for %s failed: certificate not self-signed", identifierValue)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:unauthorized", "certificate not self-signed")
 		return
 	}
 
@@ -96,20 +81,12 @@ func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge
 			keyAuthHash := sha256.Sum256([]byte(expectedKeyAuth))
 			var presentedKeyAuth []byte
 			if _, err := asn1.Unmarshal(ext.Value, &presentedKeyAuth); err != nil {
-				s.mu.Lock()
-				defer s.mu.Unlock()
-				challenge.Status = "invalid"
-				challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: "failed to parse acmeValidationV1 extension"}
-				log.Printf("TLS-ALPN-01 challenge for %s failed: failed to parse acmeValidationV1 extension: %v", identifierValue, err)
+				s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:unauthorized", "failed to parse acmeValidationV1 extension: %v", err)
 				return
 			}
 
 			if !bytes.Equal(presentedKeyAuth, keyAuthHash[:]) {
-				s.mu.Lock()
-				defer s.mu.Unlock()
-				challenge.Status = "invalid"
-				challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: "key authorization mismatch"}
-				log.Printf("TLS-ALPN-01 challenge for %s failed: key authorization mismatch. Expected %x, got %x", identifierValue, keyAuthHash[:], presentedKeyAuth)
+				s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:unauthorized", "key authorization mismatch. Expected %x, got %x", keyAuthHash[:], presentedKeyAuth)
 				return
 			}
 			found = true
@@ -117,11 +94,7 @@ func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge
 		}
 	}
 	if !found {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: "acmeValidationV1 extension not found"}
-		log.Printf("TLS-ALPN-01 challenge for %s failed: acmeValidationV1 extension not found", identifierValue)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:unauthorized", "acmeValidationV1 extension not found")
 		return
 	}
 
@@ -137,15 +110,20 @@ func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge
 	authz.Status = "valid"
 }
 
+func (s *InMemoryACMEServer) failChallenge(challenge *acmeChallenge, identifierValue, problemType, detailFormat string, a ...interface{}) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	challenge.Status = "invalid"
+	detail := fmt.Sprintf(detailFormat, a...)
+	challenge.Error = &Problem{Type: problemType, Detail: detail}
+	log.Printf("%s challenge for %s failed: %s", strings.ToUpper(challenge.Type), identifierValue, detail)
+}
+
 // validateHTTP01Challenge validates an http-01 challenge.
 func (s *InMemoryACMEServer) validateHTTP01Challenge(challenge *acmeChallenge, authzID string, identifierValue string, accountKey *jose.JSONWebKey) {
 	expectedKeyAuth, err := s.keyAuthorization(challenge.Token, accountKey)
 	if err != nil {
-		s.mu.Lock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:serverInternal", Detail: fmt.Sprintf("failed to generate key authorization: %v", err)}
-		s.mu.Unlock()
-		log.Printf("HTTP-01 challenge for %s failed: %v", identifierValue, err)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:serverInternal", "failed to generate key authorization: %v", err)
 		return
 	}
 
@@ -167,40 +145,24 @@ func (s *InMemoryACMEServer) validateHTTP01Challenge(challenge *acmeChallenge, a
 	resp, err := client.Get(fmt.Sprintf("http://%s/.well-known/acme-challenge/%s", identifierValue, challenge.Token))
 	log.Printf("http-01 challenge for %s: http get done", identifierValue)
 	if err != nil {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:connection", Detail: fmt.Sprintf("failed to connect to client: %v", err)}
-		log.Printf("HTTP-01 challenge for %s failed: %v", identifierValue, err)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:connection", "failed to connect to client: %v", err)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: fmt.Sprintf("client returned status %d", resp.StatusCode)}
-		log.Printf("HTTP-01 challenge for %s failed: client returned status %d", identifierValue, resp.StatusCode)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:unauthorized", "client returned status %d", resp.StatusCode)
 		return
 	}
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:serverInternal", Detail: fmt.Sprintf("failed to read response body: %v", err)}
-		log.Printf("HTTP-01 challenge for %s failed: %v", identifierValue, err)
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:serverInternal", "failed to read response body: %v", err)
 		return
 	}
 
 	if string(bodyBytes) != expectedKeyAuth {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-		challenge.Status = "invalid"
-		challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: "key authorization mismatch"}
-		log.Printf("HTTP-01 challenge for %s failed: key authorization mismatch. Expected %s, got %s", identifierValue, expectedKeyAuth, string(bodyBytes))
+		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:unauthorized", "key authorization mismatch. Expected %s, got %s", expectedKeyAuth, string(bodyBytes))
 		return
 	}
 
