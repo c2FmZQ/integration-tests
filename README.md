@@ -29,10 +29,10 @@ graph TD
     A -->|DevTools Protocol| B;
     B -->|HTTPS| P;
     A -->|HTTPS| P;
-    P -->|"OpenID Connect"| S1;
-    P -->|"WebSocket Proxy (TCP)"| S2;
-    P -->|"ACME"| S3;
-    S2 -->|"HTTPS (Get CA cert)"| P;
+    P -->|"ACME"| S1;
+    P -->|"OpenID Connect"| S2;
+    P -->|"WebSocket Proxy (TCP)"| S3;
+    S3 -->|"HTTPS (Get CA cert)"| P;
     P -->|HTTP Backend| B1;
     P -->|static content| B2;
     P -->|static content| B3;
