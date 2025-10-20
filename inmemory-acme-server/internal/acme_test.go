@@ -146,8 +146,8 @@ func TestFullACMEFlow(t *testing.T) {
 		SignatureAlgorithm: x509.SHA256WithRSA,
 		PublicKeyAlgorithm: x509.RSA,
 		PublicKey:          &csrKey.PublicKey,
-		Subject:            pkix.Name{CommonName: "example.org"},
-		DNSNames:           []string{"example.org"},
+		Subject:            pkix.Name{CommonName: "example.com"},
+		DNSNames:           []string{"example.com"},
 	}
 	csr, err := x509.CreateCertificateRequest(rand.Reader, csrTemplate, csrKey)
 	if err != nil {
