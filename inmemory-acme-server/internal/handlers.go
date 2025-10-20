@@ -332,6 +332,15 @@ func (s *InMemoryACMEServer) finalizeOrder(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	// Validate that the CSR identifiers match the order identifiers.
+	// https://tools.ietf.org/html/rfc8555#section-7.4
+	csrIdentifiers := getCSRIdentifiers(csr)
+	orderIdentifiers := getOrderIdentifiers(order)
+	if !identifiersMatch(csrIdentifiers, orderIdentifiers) {
+		http.Error(w, "CSR identifiers do not match order identifiers", http.StatusForbidden)
+		return
+	}
+
 	cert, err := issueCertificate(csr, s.caCert, s.caKey)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -387,4 +396,50 @@ func (s *InMemoryACMEServer) directoryHandler(w http.ResponseWriter, r *http.Req
 		KeyChange:  fmt.Sprintf("https://%s:%d/acme/key-change", s.publicName, s.port),
 	}
 	json.NewEncoder(w).Encode(dir)
+}
+
+// getCSRIdentifiers extracts all unique identifiers from a CSR.
+func getCSRIdentifiers(csr *x509.CertificateRequest) []string {
+	idMap := make(map[string]struct{})
+	if csr.Subject.CommonName != "" {
+		idMap[csr.Subject.CommonName] = struct{}{}
+	}
+	for _, name := range csr.DNSNames {
+		idMap[name] = struct{}{}
+	}
+	identifiers := make([]string, 0, len(idMap))
+	for id := range idMap {
+		identifiers = append(identifiers, id)
+	}
+	return identifiers
+}
+
+// getOrderIdentifiers extracts all identifiers from an ACME order.
+func getOrderIdentifiers(order *acmeOrder) []string {
+	var identifiers []string
+	for _, id := range order.Identifiers {
+		identifiers = append(identifiers, id.Value)
+	}
+	return identifiers
+}
+
+// identifiersMatch checks if two slices of identifiers are exactly the same.
+func identifiersMatch(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	m := make(map[string]int)
+	for _, v := range a {
+		m[v]++
+	}
+	for _, v := range b {
+		if _, ok := m[v]; !ok {
+			return false
+		}
+		m[v]--
+		if m[v] == 0 {
+			delete(m, v)
+		}
+	}
+	return len(m) == 0
 }
