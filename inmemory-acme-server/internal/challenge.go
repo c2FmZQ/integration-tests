@@ -16,6 +16,8 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
+var addressMapForTests = map[string]string{}
+
 // validateChallenge validates the given challenge.
 func (s *InMemoryACMEServer) validateChallenge(challenge *acmeChallenge, authzID string, identifierValue string, accountKey *jose.JSONWebKey) {
 	switch challenge.Type {
@@ -46,12 +48,11 @@ func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge
 		ServerName:         identifierValue,
 		InsecureSkipVerify: true, // We expect a self-signed certificate.
 	}
-	var conn *tls.Conn
-	if identifierValue == "example.com" {
-		conn, err = tls.DialWithDialer(dialer, "tcp", "127.0.0.1:5001", config)
-	} else {
-		conn, err = tls.DialWithDialer(dialer, "tcp", net.JoinHostPort(identifierValue, "443"), config)
+	addr := net.JoinHostPort(identifierValue, "443")
+	if a, exists := addressMapForTests[addr]; exists {
+		addr = a
 	}
+	conn, err := tls.DialWithDialer(dialer, "tcp", addr, config)
 	log.Printf("tls-alpn-01 challenge for %s: tls dial done", identifierValue)
 	if err != nil {
 		s.mu.Lock()
@@ -153,8 +154,8 @@ func (s *InMemoryACMEServer) validateHTTP01Challenge(challenge *acmeChallenge, a
 	dialer := &net.Dialer{}
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			if identifierValue == "example.com" {
-				return dialer.DialContext(ctx, network, "127.0.0.1:8080")
+			if a, exists := addressMapForTests[addr]; exists {
+				addr = a
 			}
 			return dialer.DialContext(ctx, network, addr)
 		},

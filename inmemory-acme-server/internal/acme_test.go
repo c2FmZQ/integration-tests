@@ -112,10 +112,11 @@ func TestFullACMEFlow(t *testing.T) {
 		challengeMux.HandleFunc("/.well-known/acme-challenge/"+challenge.Token, func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(challengeResponse))
 		})
-		challengeListener, err := net.Listen("tcp", "127.0.0.1:8080")
+		challengeListener, err := net.Listen("tcp", "127.0.0.1:0")
 		if err != nil {
 			t.Fatalf("Failed to listen for challenge server: %v", err)
 		}
+		addressMapForTests["example.com:80"] = challengeListener.Addr().String()
 		challengeServer := &http.Server{Handler: challengeMux}
 		go func() {
 			if err := challengeServer.Serve(challengeListener); err != http.ErrServerClosed {
@@ -260,15 +261,20 @@ func TestFullACMEFlowTLSALPN(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to get challenge certificate: %v", err)
 		}
+		challengeListener, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			t.Fatalf("Failed to listen for challenge server: %v", err)
+		}
+		defer challengeListener.Close()
 		challengeServer := &http.Server{
-			Addr: "127.0.0.1:5001",
 			TLSConfig: &tls.Config{
 				Certificates: []tls.Certificate{cert},
 				NextProtos:   []string{"acme-tls/1"},
 			},
 		}
+		addressMapForTests["example.com:443"] = challengeListener.Addr().String()
 		go func() {
-			if err := challengeServer.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+			if err := challengeServer.ServeTLS(challengeListener, "", ""); err != http.ErrServerClosed {
 				t.Logf("Challenge server error: %v", err)
 			}
 		}()
