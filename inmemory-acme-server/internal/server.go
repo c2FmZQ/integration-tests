@@ -71,6 +71,7 @@ func (s *InMemoryACMEServer) Start(ctx context.Context) (net.Listener, error) {
 		return nil, fmt.Errorf("Create cert file: %w", err)
 	}
 	if err := pem.Encode(caFile, &pem.Block{Type: "CERTIFICATE", Bytes: s.caCert.Raw}); err != nil {
+		caFile.Close()
 		return nil, fmt.Errorf("Write cert file: %w", err)
 	}
 	if err := caFile.Close(); err != nil {

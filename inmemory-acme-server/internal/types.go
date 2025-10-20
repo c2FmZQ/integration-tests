@@ -15,42 +15,42 @@ type acmeAccount struct {
 }
 
 type acmeOrder struct {
-	ID             string
-	AccountID      string
-	Status         string    `json:"Status"`
-	Expires        time.Time `json:"Expires"`
-	Identifiers    []AuthzID `json:"Identifiers"`
-	Authorizations []string  `json:"Authorizations"`
-	FinalizeURL    string    `json:"Finalize"`
-	CertificateURL string    `json:"Certificate"`
-	Error          *Problem  `json:"Error"`
+	ID             string    `json:"-"`
+	AccountID      string    `json:"-"`
+	Status         string    `json:"status"`
+	Expires        time.Time `json:"expires"`
+	Identifiers    []AuthzID `json:"identifiers"`
+	Authorizations []string  `json:"authorizations"`
+	FinalizeURL    string    `json:"finalize"`
+	CertificateURL string    `json:"certificate,omitempty"`
+	Error          *Problem  `json:"error,omitempty"`
 }
 
 type acmeAuthorization struct {
-	ID         string
-	Identifier AuthzID
-	Status     string
-	Expires    time.Time
-	Challenges []*acmeChallenge
-	Wildcard   bool
+	ID         string           `json:"-"`
+	Identifier AuthzID          `json:"identifier"`
+	Status     string           `json:"status"`
+	Expires    time.Time        `json:"expires"`
+	Challenges []*acmeChallenge `json:"challenges"`
+	Wildcard   bool             `json:"wildcard"`
 }
 
 type acmeChallenge struct {
-	ID               string
-	Type             string
-	Status           string
-	URL              string
-	Token            string
-	KeyAuthorization string
-	Error            *Problem
+	ID               string   `json:"-"`
+	Type             string   `json:"type"`
+	Status           string   `json:"status"`
+	URL              string   `json:"url"`
+	Token            string   `json:"token"`
+	KeyAuthorization string   `json:"keyAuthorization"`
+	Error            *Problem `json:"error,omitempty"`
 }
 
 type acmeCertificate struct {
-	ID        string
-	OrderID   string
-	CertBytes []byte
-	IssuedAt  time.Time
-	ExpiresAt time.Time
+	ID        string    `json:"-"`
+	OrderID   string    `json:"orderId"`
+	CertBytes []byte    `json:"certBytes"`
+	IssuedAt  time.Time `json:"issuedAt"`
+	ExpiresAt time.Time `json:"expiresAt"`
 }
 
 // AuthzID represents an ACME identifier for authorization.
