@@ -1,8 +1,11 @@
 package internal
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/asn1"
 	"fmt"
 	"io"
 	"log"
@@ -87,12 +90,25 @@ func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge
 	var found bool
 	for _, ext := range cert.Extensions {
 		if ext.Id.String() == "1.3.6.1.5.5.7.1.31" {
-			if string(ext.Value) != expectedKeyAuth {
+			// The value of the extension is the SHA-256 digest of the key authorization.
+			// https://tools.ietf.org/html/rfc8737#section-3
+			keyAuthHash := sha256.Sum256([]byte(expectedKeyAuth))
+			var presentedKeyAuth []byte
+			if _, err := asn1.Unmarshal(ext.Value, &presentedKeyAuth); err != nil {
+				s.mu.Lock()
+				defer s.mu.Unlock()
+				challenge.Status = "invalid"
+				challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: "failed to parse acmeValidationV1 extension"}
+				log.Printf("TLS-ALPN-01 challenge for %s failed: failed to parse acmeValidationV1 extension: %v", identifierValue, err)
+				return
+			}
+
+			if !bytes.Equal(presentedKeyAuth, keyAuthHash[:]) {
 				s.mu.Lock()
 				defer s.mu.Unlock()
 				challenge.Status = "invalid"
 				challenge.Error = &Problem{Type: "urn:ietf:params:acme:error:unauthorized", Detail: "key authorization mismatch"}
-				log.Printf("TLS-ALPN-01 challenge for %s failed: key authorization mismatch. Expected %s, got %s", identifierValue, expectedKeyAuth, string(ext.Value))
+				log.Printf("TLS-ALPN-01 challenge for %s failed: key authorization mismatch. Expected %x, got %x", identifierValue, keyAuthHash[:], presentedKeyAuth)
 				return
 			}
 			found = true
