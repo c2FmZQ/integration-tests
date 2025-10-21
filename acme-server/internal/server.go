@@ -24,15 +24,15 @@ type InMemoryACMEServer struct {
 	certFile   string
 
 	mu         sync.Mutex
-	accounts   map[string]*acmeAccount       // map[accountID]*acmeAccount
-	orders     map[string]*acmeOrder         // map[orderID]*acmeOrder
-	authz      map[string]*acmeAuthorization // map[authzID]*acmeAuthorization
-	challenges map[string]*acmeChallenge     // map[token]*acmeChallenge
-	certs      map[string]*acmeCertificate   // map[certID]*acmeCertificate
+	accounts   map[string]*acmeAccount               // map[accountID]*acmeAccount
+	orders     map[string]*acmeOrder                 // map[orderID]*acmeOrder
+	authz      map[string]*acmeAuthorization         // map[authzID]*acmeAuthorization
+	challenges map[string]*acmeChallenge             // map[token]*acmeChallenge
+	certs      map[string]*acmeCertificate           // map[certID]*acmeCertificate
 	nextID     int
 	listener   net.Listener
-	caCert     *x509.Certificate
-	caKey      crypto.Signer
+	caCerts    map[keyType]*x509.Certificate
+	caKeys     map[keyType]crypto.Signer
 	nonces     map[string]bool
 	port       int
 }
@@ -50,6 +50,8 @@ func NewInMemoryACMEServer(publicName, addr, certFile string) (*InMemoryACMEServ
 		certs:      make(map[string]*acmeCertificate),
 		nextID:     1,
 		nonces:     make(map[string]bool),
+		caCerts:    make(map[keyType]*x509.Certificate),
+		caKeys:     make(map[keyType]crypto.Signer),
 	}, nil
 }
 
@@ -61,26 +63,30 @@ func (s *InMemoryACMEServer) Start(ctx context.Context) (net.Listener, error) {
 	}
 	s.port = listener.Addr().(*net.TCPAddr).Port
 
-	caCert, caKey, err := generateCA()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate CA: %w", err)
+	for _, kt := range []keyType{rsaKey, ecdsaKey} {
+		caCert, caKey, err := generateCA(kt)
+		if err != nil {
+			return nil, fmt.Errorf("failed to generate CA: %w", err)
+		}
+		s.caCerts[kt] = caCert
+		s.caKeys[kt] = caKey
 	}
-	s.caCert = caCert
-	s.caKey = caKey
 
 	caFile, err := os.Create(s.certFile)
 	if err != nil {
 		return nil, fmt.Errorf("Create cert file: %w", err)
 	}
-	if err := pem.Encode(caFile, &pem.Block{Type: "CERTIFICATE", Bytes: s.caCert.Raw}); err != nil {
-		caFile.Close()
-		return nil, fmt.Errorf("Write cert file: %w", err)
+	defer caFile.Close()
+	for _, cert := range s.caCerts {
+		if err := pem.Encode(caFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
+			return nil, fmt.Errorf("Write cert file: %w", err)
+		}
 	}
 	if err := caFile.Close(); err != nil {
 		return nil, fmt.Errorf("Close cert file: %v", err)
 	}
 
-	serverCert, serverKey, err := generateServerCert(s.caCert, s.caKey, s.publicName)
+	serverCert, serverKey, err := generateServerCert(s.caCerts[ecdsaKey], s.caKeys[ecdsaKey], s.publicName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate server certificate: %w", err)
 	}

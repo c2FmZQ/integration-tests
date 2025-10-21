@@ -2,15 +2,14 @@ package internal
 
 import (
 	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -21,13 +20,6 @@ import (
 
 	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
-)
-
-type keyType int
-
-const (
-	rsaKey keyType = iota
-	ecdsaKey
 )
 
 func TestFullACMEFlowRSA_HTTP01(t *testing.T) {
@@ -82,16 +74,17 @@ func testFullACMEFlow(t *testing.T, kt keyType, challengeType string) {
 	}
 
 	// Create a new ACME client
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				RootCAs: pool,
+			},
+		},
+	}
 	client := &acme.Client{
 		Key:          accountKey,
 		DirectoryURL: directoryURL,
-		HTTPClient: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					RootCAs: pool,
-				},
-			},
-		},
+		HTTPClient:   httpClient,
 	}
 
 	t.Log("Create a new account")
@@ -201,7 +194,7 @@ func testFullACMEFlow(t *testing.T, kt keyType, challengeType string) {
 	}
 
 	// Finalize the order
-	der, _, err := client.CreateOrderCert(ctx, order.FinalizeURL, csr, true)
+	der, certURL, err := client.CreateOrderCert(ctx, order.FinalizeURL, csr, true)
 	if err != nil {
 		t.Fatalf("Failed to finalize order: %v", err)
 	}
@@ -210,23 +203,49 @@ func testFullACMEFlow(t *testing.T, kt keyType, challengeType string) {
 	if len(der) == 0 {
 		t.Fatal("Expected a certificate, got empty slice")
 	}
-	for i, raw := range der {
-		cert, err := x509.ParseCertificate(raw)
+
+	resp, err := httpClient.Get(certURL)
+	if err != nil {
+		t.Fatalf("Get %q: %v", certURL, err)
+	}
+	defer resp.Body.Close()
+	pemBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Read body: %v", err)
+	}
+	var certs []*x509.Certificate
+	for {
+		block, rest := pem.Decode(pemBytes)
+		if block == nil {
+			break
+		}
+		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
 			t.Fatalf("x509.ParseCertificate: %v", err)
 		}
-		t.Logf("Cert #%d %s", i, cert.Subject)
+		certs = append(certs, cert)
+		pemBytes = rest
 	}
-}
+	if len(certs) != 2 {
+		t.Fatalf("Expected 2 certificates in the chain, got %d", len(certs))
+	}
+	leafCert, caCert := certs[0], certs[1]
+	if err := leafCert.CheckSignatureFrom(caCert); err != nil {
+		t.Errorf("leafCert.CheckSignatureFrom(caCert): %v", err)
+	}
 
-func generatePrivateKey(kt keyType) (crypto.Signer, error) {
+	var wantPubKeyAlgo x509.PublicKeyAlgorithm
 	switch kt {
 	case rsaKey:
-		return rsa.GenerateKey(rand.Reader, 2048)
+		wantPubKeyAlgo = x509.RSA
 	case ecdsaKey:
-		return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	default:
-		return nil, fmt.Errorf("unknown key type: %d", kt)
+		wantPubKeyAlgo = x509.ECDSA
+	}
+	if leafCert.PublicKeyAlgorithm != wantPubKeyAlgo {
+		t.Errorf("leafCert.PublicKeyAlgorithm=%v, want %v", leafCert.PublicKeyAlgorithm, wantPubKeyAlgo)
+	}
+	if caCert.PublicKeyAlgorithm != wantPubKeyAlgo {
+		t.Errorf("caCert.PublicKeyAlgorithm=%v, want %v", caCert.PublicKeyAlgorithm, wantPubKeyAlgo)
 	}
 }
 
