@@ -50,7 +50,6 @@ func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge
 		addr = a
 	}
 	conn, err := tls.DialWithDialer(dialer, "tcp", addr, config)
-	log.Printf("tls-alpn-01 challenge for %s: tls dial done", identifierValue)
 	if err != nil {
 		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:connection", "failed to connect to client: %v", err)
 		return
@@ -143,7 +142,6 @@ func (s *InMemoryACMEServer) validateHTTP01Challenge(challenge *acmeChallenge, a
 		Transport: transport,
 	}
 	resp, err := client.Get(fmt.Sprintf("http://%s/.well-known/acme-challenge/%s", identifierValue, challenge.Token))
-	log.Printf("http-01 challenge for %s: http get done", identifierValue)
 	if err != nil {
 		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:connection", "failed to connect to client: %v", err)
 		return
