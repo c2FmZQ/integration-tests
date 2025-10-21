@@ -62,9 +62,9 @@ func TestPhotos(t *testing.T) {
 
 	runWithTimeout := func(timeout time.Duration, tasks ...chromedp.Action) {
 		t.Helper()
-		ctx, cancel := context.WithTimeout(ctx, timeout)
+		taskCtx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		if err := chromedp.Run(ctx, tasks...); err != nil {
+		if err := chromedp.Run(taskCtx, tasks...); err != nil {
 			dumpPageContent(t, ctx)
 			t.Fatalf("chromedp.Run failed: %v", err)
 		}
