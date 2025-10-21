@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // newNonce is the handler for the new-nonce endpoint.
@@ -58,14 +60,13 @@ func (s *InMemoryACMEServer) newAccount(w http.ResponseWriter, r *http.Request) 
 	}
 
 	account := &acmeAccount{
-		ID:        fmt.Sprintf("%d", s.nextID),
+		ID:        uuid.New(),
 		Key:       jws.Signatures[0].Header.JSONWebKey,
 		Contact:   req.Contact,
 		Status:    "valid",
 		CreatedAt: time.Now(),
 	}
-	s.accounts[account.ID] = account
-	s.nextID++
+	s.accounts[account.ID.String()] = account
 
 	w.Header().Set("Location", fmt.Sprintf("https://%s:%d/acme/acct/%s", s.publicName, s.port, account.ID))
 	w.WriteHeader(http.StatusCreated)
@@ -113,42 +114,42 @@ func (s *InMemoryACMEServer) newOrder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	orderID := uuid.New()
 	order := &acmeOrder{
-		ID:             fmt.Sprintf("%d", s.nextID),
+		ID:             orderID,
 		AccountID:      account.ID,
 		Status:         "pending",
 		Expires:        time.Now().Add(10 * time.Minute),
 		Identifiers:    req.Identifiers,
 		Authorizations: []string{},
-		FinalizeURL:    fmt.Sprintf("https://%s:%d/acme/finalize/%d", s.publicName, s.port, s.nextID),
+		FinalizeURL:    fmt.Sprintf("https://%s:%d/acme/finalize/%s", s.publicName, s.port, orderID),
 	}
-	s.orders[order.ID] = order
-	s.nextID++
+	s.orders[order.ID.String()] = order
 
 	for _, identifier := range req.Identifiers {
+		authzID := uuid.New()
 		authz := &acmeAuthorization{
-			ID:         fmt.Sprintf("%d", s.nextID),
+			ID:         authzID,
 			Identifier: identifier,
 			Status:     "pending", // Initially pending
 			Expires:    time.Now().Add(10 * time.Minute),
 			Challenges: []*acmeChallenge{},
 			Wildcard:   false,
 		}
-		s.authz[authz.ID] = authz
+		s.authz[authz.ID.String()] = authz
 		order.Authorizations = append(order.Authorizations, fmt.Sprintf("https://%s:%d/acme/authz/%s", s.publicName, s.port, authz.ID))
-		s.nextID++
 
 		for _, challengeType := range []string{"http-01", "tls-alpn-01"} {
+			challengeID := uuid.New()
 			challenge := &acmeChallenge{
-				ID:     fmt.Sprintf("%d", s.nextID),
+				ID:     challengeID,
 				Type:   challengeType,
-				URL:    fmt.Sprintf("https://%s:%d/acme/challenge/%d", s.publicName, s.port, s.nextID),
-				Token:  fmt.Sprintf("token-%d", s.nextID),
+				URL:    fmt.Sprintf("https://%s:%d/acme/challenge/%s", s.publicName, s.port, challengeID),
+				Token:  uuid.New(),
 				Status: "pending",
 			}
 			s.challenges[challenge.URL] = challenge
 			authz.Challenges = append(authz.Challenges, challenge)
-			s.nextID++
 		}
 	}
 
@@ -233,7 +234,7 @@ func (s *InMemoryACMEServer) postChallenge(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	challenge.Status = "processing"
-	go s.validateChallenge(challenge, authz.ID, authz.Identifier.Value, account.Key)
+	go s.validateChallenge(challenge, authz.ID.String(), authz.Identifier.Value, account.Key)
 	json.NewEncoder(w).Encode(challenge)
 }
 
@@ -354,7 +355,8 @@ func (s *InMemoryACMEServer) finalizeOrder(w http.ResponseWriter, r *http.Reques
 	}
 
 	order.Status = "valid"
-	order.CertificateURL = fmt.Sprintf("https://%s:%d/acme/cert/%s", s.publicName, s.port, order.ID)
+	certID := uuid.New()
+	order.CertificateURL = fmt.Sprintf("https://%s:%d/acme/cert/%s", s.publicName, s.port, certID)
 
 	var certBuf bytes.Buffer
 	if err := pem.Encode(&certBuf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
@@ -367,13 +369,13 @@ func (s *InMemoryACMEServer) finalizeOrder(w http.ResponseWriter, r *http.Reques
 	}
 
 	acmeCert := &acmeCertificate{
-		ID:        order.ID,
+		ID:        certID,
 		OrderID:   order.ID,
 		CertBytes: certBuf.Bytes(),
 		IssuedAt:  time.Now(),
 		ExpiresAt: cert.NotAfter,
 	}
-	s.certs[acmeCert.ID] = acmeCert
+	s.certs[acmeCert.ID.String()] = acmeCert
 
 	w.Header().Set("Location", fmt.Sprintf("https://%s:%d/acme/order/%s", s.publicName, s.port, order.ID))
 	w.WriteHeader(http.StatusOK)

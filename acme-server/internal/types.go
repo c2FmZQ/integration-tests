@@ -3,11 +3,12 @@ package internal
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gopkg.in/square/go-jose.v2"
 )
 
 type acmeAccount struct {
-	ID        string
+	ID        uuid.UUID
 	Key       *jose.JSONWebKey
 	Status    string
 	Contact   []string
@@ -15,8 +16,8 @@ type acmeAccount struct {
 }
 
 type acmeOrder struct {
-	ID             string    `json:"-"`
-	AccountID      string    `json:"-"`
+	ID             uuid.UUID `json:"-"`
+	AccountID      uuid.UUID `json:"-"`
 	Status         string    `json:"status"`
 	Expires        time.Time `json:"expires"`
 	Identifiers    []AuthzID `json:"identifiers"`
@@ -27,7 +28,7 @@ type acmeOrder struct {
 }
 
 type acmeAuthorization struct {
-	ID         string           `json:"-"`
+	ID         uuid.UUID        `json:"-"`
 	Identifier AuthzID          `json:"identifier"`
 	Status     string           `json:"status"`
 	Expires    time.Time        `json:"expires"`
@@ -36,18 +37,18 @@ type acmeAuthorization struct {
 }
 
 type acmeChallenge struct {
-	ID               string   `json:"-"`
-	Type             string   `json:"type"`
-	Status           string   `json:"status"`
-	URL              string   `json:"url"`
-	Token            string   `json:"token"`
-	KeyAuthorization string   `json:"keyAuthorization"`
-	Error            *Problem `json:"error,omitempty"`
+	ID               uuid.UUID `json:"-"`
+	Type             string    `json:"type"`
+	Status           string    `json:"status"`
+	URL              string    `json:"url"`
+	Token            uuid.UUID `json:"token"`
+	KeyAuthorization string    `json:"keyAuthorization"`
+	Error            *Problem  `json:"error,omitempty"`
 }
 
 type acmeCertificate struct {
-	ID        string    `json:"-"`
-	OrderID   string    `json:"orderId"`
+	ID        uuid.UUID `json:"-"`
+	OrderID   uuid.UUID `json:"orderId"`
 	CertBytes []byte    `json:"certBytes"`
 	IssuedAt  time.Time `json:"issuedAt"`
 	ExpiresAt time.Time `json:"expiresAt"`

@@ -29,7 +29,6 @@ type InMemoryACMEServer struct {
 	authz      map[string]*acmeAuthorization // map[authzID]*acmeAuthorization
 	challenges map[string]*acmeChallenge     // map[token]*acmeChallenge
 	certs      map[string]*acmeCertificate   // map[certID]*acmeCertificate
-	nextID     int
 	listener   net.Listener
 	caCerts    map[keyType]*x509.Certificate
 	caKeys     map[keyType]crypto.Signer
@@ -48,7 +47,6 @@ func NewInMemoryACMEServer(publicName, addr, certFile string) (*InMemoryACMEServ
 		authz:      make(map[string]*acmeAuthorization),
 		challenges: make(map[string]*acmeChallenge),
 		certs:      make(map[string]*acmeCertificate),
-		nextID:     1,
 		nonces:     make(map[string]bool),
 		caCerts:    make(map[keyType]*x509.Certificate),
 		caKeys:     make(map[keyType]crypto.Signer),

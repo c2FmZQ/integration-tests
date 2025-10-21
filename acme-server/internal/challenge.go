@@ -31,7 +31,7 @@ func (s *InMemoryACMEServer) validateChallenge(challenge *acmeChallenge, authzID
 
 // validateTLSALPN01Challenge validates a tls-alpn-01 challenge.
 func (s *InMemoryACMEServer) validateTLSALPN01Challenge(challenge *acmeChallenge, authzID string, identifierValue string, accountKey *jose.JSONWebKey) {
-	expectedKeyAuth, err := s.keyAuthorization(challenge.Token, accountKey)
+	expectedKeyAuth, err := s.keyAuthorization(challenge.Token.String(), accountKey)
 	if err != nil {
 		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:serverInternal", "failed to generate key authorization: %v", err)
 		return
@@ -121,7 +121,7 @@ func (s *InMemoryACMEServer) failChallenge(challenge *acmeChallenge, identifierV
 
 // validateHTTP01Challenge validates an http-01 challenge.
 func (s *InMemoryACMEServer) validateHTTP01Challenge(challenge *acmeChallenge, authzID string, identifierValue string, accountKey *jose.JSONWebKey) {
-	expectedKeyAuth, err := s.keyAuthorization(challenge.Token, accountKey)
+	expectedKeyAuth, err := s.keyAuthorization(challenge.Token.String(), accountKey)
 	if err != nil {
 		s.failChallenge(challenge, identifierValue, "urn:ietf:params:acme:error:serverInternal", "failed to generate key authorization: %v", err)
 		return
