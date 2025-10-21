@@ -1,13 +1,13 @@
 services:
   acme-server:
-    image: c2fmzq/inmemory-acme-server:integrationtest
+    image: c2fmzq/acme-server:integrationtest
     user: "1000:1000"
     hostname: acme-v02.api.letsencrypt.org
     command: "--cert-file=/etc/ssl/certs/root-ca.pem"
     volumes:
       - tls:/etc/ssl/certs
     healthcheck:
-      test: ["CMD", "/inmemory-acme-server", "--ready", "--cert-file=/etc/ssl/certs/root-ca.pem"]
+      test: ["CMD", "/acme-server", "--ready", "--cert-file=/etc/ssl/certs/root-ca.pem"]
       interval: 5s
       retries: 5
       start_period: 1s

@@ -1,4 +1,4 @@
-module inmemory-acme-server
+module acme-server
 
 go 1.25.3
 

@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"inmemory-acme-server/internal"
+	"acme-server/internal"
 )
 
 var (

@@ -1,4 +1,4 @@
-inmemory-acme-server/inmemory-acme-server
+acme-server/acme-server
 mock-oidc-server/mock-oidc-server
 mock-ssh-server/mock-ssh-server
 devtests/integration-tests
@@ -6,5 +6,3 @@ photos/
 c2fmzq.org/
 sshterm/
 tlsproxy/
-inmemory-acme-server/.gocache
-inmemory-acme-server/.gopath
