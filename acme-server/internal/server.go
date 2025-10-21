@@ -24,11 +24,11 @@ type InMemoryACMEServer struct {
 	certFile   string
 
 	mu         sync.Mutex
-	accounts   map[string]*acmeAccount               // map[accountID]*acmeAccount
-	orders     map[string]*acmeOrder                 // map[orderID]*acmeOrder
-	authz      map[string]*acmeAuthorization         // map[authzID]*acmeAuthorization
-	challenges map[string]*acmeChallenge             // map[token]*acmeChallenge
-	certs      map[string]*acmeCertificate           // map[certID]*acmeCertificate
+	accounts   map[string]*acmeAccount       // map[accountID]*acmeAccount
+	orders     map[string]*acmeOrder         // map[orderID]*acmeOrder
+	authz      map[string]*acmeAuthorization // map[authzID]*acmeAuthorization
+	challenges map[string]*acmeChallenge     // map[token]*acmeChallenge
+	certs      map[string]*acmeCertificate   // map[certID]*acmeCertificate
 	nextID     int
 	listener   net.Listener
 	caCerts    map[keyType]*x509.Certificate
@@ -81,9 +81,6 @@ func (s *InMemoryACMEServer) Start(ctx context.Context) (net.Listener, error) {
 		if err := pem.Encode(caFile, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
 			return nil, fmt.Errorf("Write cert file: %w", err)
 		}
-	}
-	if err := caFile.Close(); err != nil {
-		return nil, fmt.Errorf("Close cert file: %v", err)
 	}
 
 	serverCert, serverKey, err := generateServerCert(s.caCerts[ecdsaKey], s.caKeys[ecdsaKey], s.publicName)
