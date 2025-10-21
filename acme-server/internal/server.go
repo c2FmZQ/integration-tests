@@ -2,6 +2,8 @@ package internal
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
@@ -30,7 +32,7 @@ type InMemoryACMEServer struct {
 	nextID     int
 	listener   net.Listener
 	caCert     *x509.Certificate
-	caKey      *rsa.PrivateKey
+	caKey      crypto.Signer
 	nonces     map[string]bool
 	port       int
 }
@@ -83,9 +85,14 @@ func (s *InMemoryACMEServer) Start(ctx context.Context) (net.Listener, error) {
 		return nil, fmt.Errorf("failed to generate server certificate: %w", err)
 	}
 
+	serverKeyBytes, err := marshalPrivateKey(serverKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal server key: %w", err)
+	}
+
 	tlsCert, err := tls.X509KeyPair(
 		pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: serverCert.Raw}),
-		pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(serverKey)}),
+		pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: serverKeyBytes}),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create TLS certificate: %w", err)
@@ -125,4 +132,15 @@ func (s *InMemoryACMEServer) Start(ctx context.Context) (net.Listener, error) {
 	}()
 
 	return listener, nil
+}
+
+func marshalPrivateKey(key crypto.PrivateKey) ([]byte, error) {
+	switch k := key.(type) {
+	case *rsa.PrivateKey:
+		return x509.MarshalPKCS1PrivateKey(k), nil
+	case *ecdsa.PrivateKey:
+		return x509.MarshalECPrivateKey(k)
+	default:
+		return nil, fmt.Errorf("unsupported key type: %T", key)
+	}
 }
