@@ -27,9 +27,9 @@ backends:
         - paths: [/foo]
   - serverNames:
       - "photos.example.com"
-    mode: "http"
+    mode: "tlspassthrough"
     addresses:
-      - "photos-backend:8080"
+      - "photos-backend:8443"
   - serverNames:
       - "c2fmzq.org"
     mode: "local"
