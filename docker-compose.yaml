@@ -48,16 +48,24 @@ services:
     user: "1000:1000"
     hostname: photos-backend.example.com
     volumes:
+      - tls:/etc/ssl/certs
       - type: tmpfs
         target: /tmp
         tmpfs:
           size: 10M
           mode: 0o1777
+    # Disable autocert HTTP listener on port 80, as tlsproxy is listening there.
+    # TLS-ALPN-01 challenges are handled by the main listener on port 8443.
+    command: '--autocert-address='
     environment:
-      - C2FMZQ_ADDRESS=:8080
+      - C2FMZQ_DOMAIN=photos.example.com
+      - C2FMZQ_ADDRESS=:8443
       - C2FMZQ_PASSPHRASE=test
       - C2FMZQ_PASSPHRASE_FILE=
       - C2FMZQ_DATABASE=/tmp/data
+    depends_on:
+      acme-server:
+        condition: service_healthy
 
   mock-oidc-server:
     image: c2fmzq/mock-oidc-server:integrationtest

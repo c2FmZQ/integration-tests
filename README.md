@@ -33,7 +33,7 @@ graph TD
     P -->|"OpenID Connect"| S2;
     P -->|"WebSocket Proxy (TCP)"| S3;
     S3 -->|"HTTPS (Get CA cert)"| P;
-    P -->|HTTP Backend| B1;
+    P -->|TLSPASSTHROUGH Backend| B1;
     P -->|static content| B2;
     P -->|static content| B3;
     P -->|HTTPS Backend| B4;
