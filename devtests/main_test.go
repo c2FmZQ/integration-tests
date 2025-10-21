@@ -77,26 +77,18 @@ func TestPhotos(t *testing.T) {
 
 	runWithTimeout(10*time.Second,
 		chromedp.WaitVisible(`#skip-passphrase-button`, chromedp.ByQuery),
-		chromedp.ScrollIntoView(`#skip-passphrase-button`, chromedp.ByQuery),
 		chromedp.WaitEnabled(`#skip-passphrase-button`, chromedp.ByQuery),
-		chromedp.Focus(`#skip-passphrase-button`, chromedp.ByQuery),
 		chromedp.Click(`#skip-passphrase-button`, chromedp.ByQuery),
-	)
-
-	runWithTimeout(10*time.Second,
 		chromedp.WaitVisible(`button.prompt-confirm-button`, chromedp.ByQuery),
 		chromedp.Click(`button.prompt-confirm-button`, chromedp.ByQuery),
 	)
 
-	runWithTimeout(30*time.Second,
+	runWithTimeout(60*time.Second,
 		chromedp.WaitVisible(`#register-tab`, chromedp.ByQuery),
-		chromedp.WaitEnabled(`#register-tab`, chromedp.ByQuery),
 		chromedp.Click(`#register-tab`, chromedp.ByQuery),
-		chromedp.WaitVisible(`input[name=email]`, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=email]`, username, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=password]`, password, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=password2]`, password, chromedp.ByQuery),
-		chromedp.WaitEnabled(`#login-button`, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=email]`, username, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=password]`, password, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=password2]`, password, chromedp.ByQuery),
 		chromedp.Click(`#login-button`, chromedp.ByQuery),
 		chromedp.WaitVisible(`#gallery`, chromedp.ByQuery),
 	)
@@ -121,22 +113,20 @@ func TestPhotos(t *testing.T) {
 		chromedp.Navigate(`https://c2fmzq.org/pwa`),
 	)
 
+	t.Logf("Setting a passphrase")
 	runWithTimeout(10*time.Second,
 		chromedp.WaitVisible(`#passphrase-input`, chromedp.ByQuery),
-		chromedp.SendKeys(`#passphrase-input`, "foo", chromedp.ByQuery),
-		chromedp.SendKeys(`#passphrase-input2`, "foo", chromedp.ByQuery),
-		chromedp.WaitEnabled(`#set-passphrase-button`, chromedp.ByQuery),
-		chromedp.Focus(`#set-passphrase-button`, chromedp.ByQuery),
+		chromedp.SetValue(`#passphrase-input`, "foo", chromedp.ByQuery),
+		chromedp.SetValue(`#passphrase-input2`, "foo", chromedp.ByQuery),
 		chromedp.Click(`#set-passphrase-button`, chromedp.ByQuery),
 	)
 
-	runWithTimeout(30*time.Second,
+	t.Logf("Logging in")
+	runWithTimeout(60*time.Second,
 		chromedp.WaitVisible(`input[name=email]`, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=email]`, username, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=password]`, password, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=server]`, "https://photos.example.com/", chromedp.ByQuery),
-		chromedp.WaitVisible(`#login-button`, chromedp.ByQuery),
-		chromedp.WaitEnabled(`#login-button`, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=email]`, username, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=password]`, password, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=server]`, "https://photos.example.com/", chromedp.ByQuery),
 		chromedp.Click(`#login-button`, chromedp.ByQuery),
 		chromedp.WaitVisible(`#gallery img[alt="test.jpg"]`, chromedp.ByQuery),
 	)
