@@ -118,6 +118,8 @@ func TestPhotos(t *testing.T) {
 		chromedp.SendKeys(`input[name=email]`, username, chromedp.ByQuery),
 		chromedp.SendKeys(`input[name=password]`, password, chromedp.ByQuery),
 		chromedp.SendKeys(`input[name=server]`, "https://photos.example.com/", chromedp.ByQuery),
+
+		chromedp.WaitVisible(`#login-button`, chromedp.ByQuery),
 		chromedp.Click(`#login-button`, chromedp.ByQuery),
 
 		chromedp.WaitVisible(`#gallery img[alt="test.jpg"]`, chromedp.ByQuery),
