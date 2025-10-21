@@ -18,7 +18,7 @@ services:
     hostname: tlsproxy.example.com
     command: "--passphrase=test"
     volumes:
-      - tls:/etc/ssl/certs
+      - tls:/etc/ssl/certs:ro
       - ./testdata/tlsproxy-config.yaml:/config/config.yaml:ro
       - ./testdata/html:/html:ro
       - ./testdata/secure:/secure:ro
@@ -48,7 +48,7 @@ services:
     user: "1000:1000"
     hostname: photos-backend.example.com
     volumes:
-      - tls:/etc/ssl/certs
+      - tls:/certs:ro
       - type: tmpfs
         target: /tmp
         tmpfs:
@@ -58,6 +58,7 @@ services:
     # TLS-ALPN-01 challenges are handled by the main listener on port 8443.
     command: '--autocert-address='
     environment:
+      - SSL_CERT_DIR=/certs
       - C2FMZQ_DOMAIN=photos.example.com
       - C2FMZQ_ADDRESS=:8443
       - C2FMZQ_PASSPHRASE=test
