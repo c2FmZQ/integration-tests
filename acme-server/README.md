@@ -15,7 +15,7 @@ go build
 To run the server, use the following command:
 
 ```
-./inmemory-acme-server [flags]
+./acme-server [flags]
 ```
 
 ### Flags
@@ -45,7 +45,7 @@ services:
     volumes:
       - tls:/etc/ssl/certs
     healthcheck:
-      test: ["CMD", "/inmemory-acme-server", "--ready", "--cert-file=/etc/ssl/certs/root-ca.pem"]
+      test: ["CMD", "/acme-server", "--ready", "--cert-file=/etc/ssl/certs/root-ca.pem"]
       interval: 5s
       retries: 5
       start_period: 1s
