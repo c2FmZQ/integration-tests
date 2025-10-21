@@ -55,78 +55,82 @@ func TestPhotos(t *testing.T) {
 	ctx, cancel = chromedp.NewContext(ctx, chromedp.WithLogf(t.Logf))
 	defer cancel()
 
-	// create a timeout
-	ctx, cancel = context.WithTimeout(ctx, 120*time.Second)
-	defer cancel()
-
 	clearCookies(t, ctx)
 
 	username := "test@example.com"
 	password := "password"
 
-	// Test photos UI
-	if err := chromedp.Run(ctx,
-		chromedp.Navigate(`https://photos.example.com`),
-
-		chromedp.WaitVisible(`#skip-passphrase-button`, chromedp.ByQuery),
-		chromedp.Click(`#skip-passphrase-button`, chromedp.ByQuery),
-
-		chromedp.WaitVisible(`button.prompt-confirm-button`, chromedp.ByQuery),
-		chromedp.Click(`button.prompt-confirm-button`, chromedp.ByQuery),
-
-		chromedp.WaitVisible(`#register-tab`, chromedp.ByQuery),
-		chromedp.Click(`#register-tab`, chromedp.ByQuery),
-
-		chromedp.WaitVisible(`input[name=email]`, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=email]`, username, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=password]`, password, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=password2]`, password, chromedp.ByQuery),
-		chromedp.Click(`#login-button`, chromedp.ByQuery),
-
-		chromedp.WaitVisible(`#gallery`, chromedp.ByQuery),
-	); err != nil {
-		dumpPageContent(t, ctx)
-		t.Fatalf("Register account: %v", err)
+	runWithTimeout := func(timeout time.Duration, tasks ...chromedp.Action) {
+		t.Helper()
+		taskCtx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+		if err := chromedp.Run(taskCtx, tasks...); err != nil {
+			dumpPageContent(t, ctx)
+			t.Fatalf("chromedp.Run failed: %v", err)
+		}
 	}
 
-	if err := chromedp.Run(ctx,
+	t.Logf("Starting registration flow")
+	runWithTimeout(30*time.Second,
+		chromedp.Navigate(`https://photos.example.com`),
+	)
+
+	runWithTimeout(10*time.Second,
+		chromedp.WaitVisible(`#skip-passphrase-button`, chromedp.ByQuery),
+		chromedp.WaitEnabled(`#skip-passphrase-button`, chromedp.ByQuery),
+		chromedp.Click(`#skip-passphrase-button`, chromedp.ByQuery),
+		chromedp.WaitVisible(`button.prompt-confirm-button`, chromedp.ByQuery),
+		chromedp.Click(`button.prompt-confirm-button`, chromedp.ByQuery),
+	)
+
+	runWithTimeout(60*time.Second,
+		chromedp.WaitVisible(`#register-tab`, chromedp.ByQuery),
+		chromedp.Click(`#register-tab`, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=email]`, username, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=password]`, password, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=password2]`, password, chromedp.ByQuery),
+		chromedp.Click(`#login-button`, chromedp.ByQuery),
+		chromedp.WaitVisible(`#gallery`, chromedp.ByQuery),
+	)
+	t.Logf("Finished registration flow")
+
+	t.Logf("Starting upload flow")
+	runWithTimeout(30*time.Second,
 		chromedp.WaitVisible(`#add-button`, chromedp.ByQuery),
 		chromedp.Click(`#add-button`, chromedp.ByQuery),
 		chromedp.WaitVisible(`#menu-upload-files`, chromedp.ByQuery),
 		chromedp.Click(`#menu-upload-files`, chromedp.ByQuery),
-
 		chromedp.WaitVisible(`#upload-file-input`, chromedp.ByQuery),
 		chromedp.SetUploadFiles(`#upload-file-input`, []string{"/test.jpg"}),
 		chromedp.WaitVisible(`.upload-file-list-upload-button`, chromedp.ByQuery),
 		chromedp.Click(`.upload-file-list-upload-button`, chromedp.ByQuery),
-
 		chromedp.WaitVisible(`img[alt="test.jpg"]`, chromedp.ByQuery),
-	); err != nil {
-		dumpPageContent(t, ctx)
-		t.Fatalf("Upload file: %v", err)
-	}
+	)
+	t.Logf("Finished upload flow")
 
-	// Now, login through c2fmzq.org
-	if err := chromedp.Run(ctx,
+	t.Logf("Starting login flow")
+	runWithTimeout(30*time.Second,
 		chromedp.Navigate(`https://c2fmzq.org/pwa`),
+	)
+
+	t.Logf("Setting a passphrase")
+	runWithTimeout(10*time.Second,
 		chromedp.WaitVisible(`#passphrase-input`, chromedp.ByQuery),
-		chromedp.SendKeys(`#passphrase-input`, "foo", chromedp.ByQuery),
-		chromedp.SendKeys(`#passphrase-input2`, "foo", chromedp.ByQuery),
+		chromedp.SetValue(`#passphrase-input`, "foo", chromedp.ByQuery),
+		chromedp.SetValue(`#passphrase-input2`, "foo", chromedp.ByQuery),
 		chromedp.Click(`#set-passphrase-button`, chromedp.ByQuery),
+	)
 
+	t.Logf("Logging in")
+	runWithTimeout(60*time.Second,
 		chromedp.WaitVisible(`input[name=email]`, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=email]`, username, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=password]`, password, chromedp.ByQuery),
-		chromedp.SendKeys(`input[name=server]`, "https://photos.example.com/", chromedp.ByQuery),
-
-		chromedp.WaitVisible(`#login-button`, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=email]`, username, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=password]`, password, chromedp.ByQuery),
+		chromedp.SetValue(`input[name=server]`, "https://photos.example.com/", chromedp.ByQuery),
 		chromedp.Click(`#login-button`, chromedp.ByQuery),
-
 		chromedp.WaitVisible(`#gallery img[alt="test.jpg"]`, chromedp.ByQuery),
-	); err != nil {
-		dumpPageContent(t, ctx)
-		t.Fatalf("Login: %v", err)
-	}
+	)
+	t.Logf("Finished login flow")
 }
 
 func TestSSHTerm(t *testing.T) {
