@@ -54,6 +54,8 @@ services:
         tmpfs:
           size: 10M
           mode: 0o1777
+    # Disable autocert HTTP listener on port 80, as tlsproxy is listening there.
+    # TLS-ALPN-01 challenges are handled by the main listener on port 8443.
     command: '--autocert-address='
     environment:
       - C2FMZQ_DOMAIN=photos.example.com
