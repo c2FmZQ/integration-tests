@@ -74,6 +74,7 @@ func TestPhotos(t *testing.T) {
 	runWithTimeout(30*time.Second,
 		chromedp.Navigate(`https://photos.example.com`),
 		chromedp.WaitVisible(`#skip-passphrase-button`, chromedp.ByQuery),
+		chromedp.WaitEnabled(`#skip-passphrase-button`, chromedp.ByQuery),
 		chromedp.Click(`#skip-passphrase-button`, chromedp.ByQuery),
 		chromedp.WaitVisible(`button.prompt-confirm-button`, chromedp.ByQuery),
 		chromedp.Click(`button.prompt-confirm-button`, chromedp.ByQuery),
