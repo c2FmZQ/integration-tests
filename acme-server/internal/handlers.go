@@ -1,6 +1,9 @@
 package internal
 
 import (
+	"bytes"
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
@@ -333,7 +336,18 @@ func (s *InMemoryACMEServer) finalizeOrder(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	cert, err := issueCertificate(csr, s.caCert, s.caKey)
+	var kt keyType
+	switch csr.PublicKey.(type) {
+	case *rsa.PublicKey:
+		kt = rsaKey
+	case *ecdsa.PublicKey:
+		kt = ecdsaKey
+	default:
+		http.Error(w, "unsupported key type in CSR", http.StatusBadRequest)
+		return
+	}
+
+	cert, err := issueCertificate(csr, s.caCerts[kt], s.caKeys[kt])
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -342,10 +356,20 @@ func (s *InMemoryACMEServer) finalizeOrder(w http.ResponseWriter, r *http.Reques
 	order.Status = "valid"
 	order.CertificateURL = fmt.Sprintf("https://%s:%d/acme/cert/%s", s.publicName, s.port, order.ID)
 
+	var certBuf bytes.Buffer
+	if err := pem.Encode(&certBuf, &pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}); err != nil {
+		http.Error(w, "failed to encode certificate", http.StatusInternalServerError)
+		return
+	}
+	if err := pem.Encode(&certBuf, &pem.Block{Type: "CERTIFICATE", Bytes: s.caCerts[kt].Raw}); err != nil {
+		http.Error(w, "failed to encode CA certificate", http.StatusInternalServerError)
+		return
+	}
+
 	acmeCert := &acmeCertificate{
 		ID:        order.ID,
 		OrderID:   order.ID,
-		CertBytes: pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}),
+		CertBytes: certBuf.Bytes(),
 		IssuedAt:  time.Now(),
 		ExpiresAt: cert.NotAfter,
 	}
