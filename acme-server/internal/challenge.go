@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"gopkg.in/square/go-jose.v2"
+	"github.com/go-jose/go-jose/v4"
 )
 
 var addressMapForTests = map[string]string{}

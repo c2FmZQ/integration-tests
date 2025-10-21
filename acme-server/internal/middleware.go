@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	"gopkg.in/square/go-jose.v2"
+	"github.com/go-jose/go-jose/v4"
 )
 
 // generateNonce creates a new unique nonce.
@@ -27,7 +27,11 @@ func (s *InMemoryACMEServer) verifyJWSAndIssueNonce(w http.ResponseWriter, r *ht
 		return nil, nil, fmt.Errorf("failed to read request body: %w", err)
 	}
 
-	jws, err := jose.ParseSigned(string(body))
+	jws, err := jose.ParseSigned(string(body), []jose.SignatureAlgorithm{
+		jose.RS256, jose.RS384, jose.RS512,
+		jose.ES256, jose.ES384, jose.ES512,
+		jose.PS256, jose.PS384, jose.PS512,
+	})
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to parse JWS: %w", err)
 	}
