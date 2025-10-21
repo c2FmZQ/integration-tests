@@ -33,8 +33,12 @@ func issueCertificate(csr *x509.CertificateRequest, caCert *x509.Certificate, ca
 	if err != nil {
 		return nil, err
 	}
+	serialNumber, err := generateSerialNumber()
+	if err != nil {
+		return nil, err
+	}
 	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(time.Now().Unix()),
+		SerialNumber: serialNumber,
 		Subject:      csr.Subject,
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().Add(90 * 24 * time.Hour),
@@ -64,8 +68,12 @@ func generateCA() (*x509.Certificate, *rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	serialNumber, err := generateSerialNumber()
+	if err != nil {
+		return nil, nil, err
+	}
 	ca := &x509.Certificate{
-		SerialNumber: big.NewInt(2019),
+		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			Organization: []string{"Mock ACME Inc."},
 		},
@@ -103,8 +111,12 @@ func generateServerCert(caCert *x509.Certificate, caKey *rsa.PrivateKey, name st
 	if err != nil {
 		return nil, nil, err
 	}
+	serialNumber, err := generateSerialNumber()
+	if err != nil {
+		return nil, nil, err
+	}
 	cert := &x509.Certificate{
-		SerialNumber: big.NewInt(1658),
+		SerialNumber: serialNumber,
 		Subject: pkix.Name{
 			Organization: []string{"Mock ACME Inc."},
 		},
@@ -136,4 +148,13 @@ func calculateSubjectKeyId(pub crypto.PublicKey) ([]byte, error) {
 	}
 	hash := sha1.Sum(spki)
 	return hash[:], nil
+}
+
+func generateSerialNumber() (*big.Int, error) {
+	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
+	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
+	if err != nil {
+		return nil, err
+	}
+	return serialNumber, nil
 }
