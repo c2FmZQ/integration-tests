@@ -2,6 +2,8 @@ package internal
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
@@ -15,6 +17,13 @@ import (
 	"gopkg.in/square/go-jose.v2"
 )
 
+type keyType int
+
+const (
+	rsaKey keyType = iota
+	ecdsaKey
+)
+
 // keyAuthorization creates the key authorization string for a given token and account key.
 func (s *InMemoryACMEServer) keyAuthorization(token string, key *jose.JSONWebKey) (string, error) {
 	thumbprint, err := key.Thumbprint(crypto.SHA256)
@@ -25,7 +34,7 @@ func (s *InMemoryACMEServer) keyAuthorization(token string, key *jose.JSONWebKey
 }
 
 // issueCertificate issues a certificate for the given CSR, signed by the CA.
-func issueCertificate(csr *x509.CertificateRequest, caCert *x509.Certificate, caKey *rsa.PrivateKey) (*x509.Certificate, error) {
+func issueCertificate(csr *x509.CertificateRequest, caCert *x509.Certificate, caKey crypto.Signer) (*x509.Certificate, error) {
 	// Implements RFC 8555, Section 7.4.2 "Certificate Issuance"
 	// https://datatracker.ietf.org/doc/html/rfc8555#section-7.4.2
 	// "The CA issues a certificate for the identifiers in the order, based on the CSR provided by the client."
@@ -57,14 +66,17 @@ func issueCertificate(csr *x509.CertificateRequest, caCert *x509.Certificate, ca
 }
 
 // generateCA generates a self-signed CA certificate and private key.
-func generateCA() (*x509.Certificate, *rsa.PrivateKey, error) {
+func generateCA(kt keyType) (*x509.Certificate, crypto.Signer, error) {
 	// This function generates a self-signed CA certificate for the mock ACME server.
 	// While not directly specified in RFC 8555, a CA is a prerequisite for issuing certificates.
-	caPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	caPrivKey, err := generatePrivateKey(kt)
 	if err != nil {
 		return nil, nil, err
 	}
-	subjectKeyId, err := calculateSubjectKeyId(&caPrivKey.PublicKey)
+
+	pubKey := caPrivKey.Public()
+
+	subjectKeyId, err := calculateSubjectKeyId(pubKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -86,7 +98,7 @@ func generateCA() (*x509.Certificate, *rsa.PrivateKey, error) {
 		SubjectKeyId:          subjectKeyId,
 	}
 
-	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, &caPrivKey.PublicKey, caPrivKey)
+	caBytes, err := x509.CreateCertificate(rand.Reader, ca, ca, pubKey, caPrivKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -100,10 +112,10 @@ func generateCA() (*x509.Certificate, *rsa.PrivateKey, error) {
 }
 
 // generateServerCert generates a server certificate signed by the mock CA.
-func generateServerCert(caCert *x509.Certificate, caKey *rsa.PrivateKey, name string) (*x509.Certificate, *rsa.PrivateKey, error) {
+func generateServerCert(caCert *x509.Certificate, caKey crypto.Signer, name string) (*x509.Certificate, crypto.Signer, error) {
 	// This function generates a server certificate signed by the mock CA.
 	// While not directly specified in RFC 8555, a server certificate is needed for the HTTPS server.
-	certPrivKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	certPrivKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -157,4 +169,15 @@ func generateSerialNumber() (*big.Int, error) {
 		return nil, err
 	}
 	return serialNumber, nil
+}
+
+func generatePrivateKey(kt keyType) (crypto.Signer, error) {
+	switch kt {
+	case rsaKey:
+		return rsa.GenerateKey(rand.Reader, 2048)
+	case ecdsaKey:
+		return ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	default:
+		return nil, fmt.Errorf("unknown key type: %d", kt)
+	}
 }
