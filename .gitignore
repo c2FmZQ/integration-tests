@@ -1,3 +1,4 @@
+acme-server/acme-server
 mock-oidc-server/mock-oidc-server
 mock-ssh-server/mock-ssh-server
 devtests/integration-tests

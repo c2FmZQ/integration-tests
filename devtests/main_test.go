@@ -2,6 +2,7 @@ package integration_test
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
@@ -14,7 +15,6 @@ const (
 )
 
 func TestHTTPS(t *testing.T) {
-	client := httpClient(t)
 	to := time.After(10 * time.Second)
 	for _, h := range []struct {
 		url  string
@@ -29,7 +29,7 @@ func TestHTTPS(t *testing.T) {
 		{"https://pki.example.com", 403},
 	} {
 		for {
-			resp, err := client.Get(h.url)
+			resp, err := http.Get(h.url)
 			if err == nil && resp.StatusCode == h.code {
 				break
 			}
@@ -118,6 +118,8 @@ func TestPhotos(t *testing.T) {
 		chromedp.SendKeys(`input[name=email]`, username, chromedp.ByQuery),
 		chromedp.SendKeys(`input[name=password]`, password, chromedp.ByQuery),
 		chromedp.SendKeys(`input[name=server]`, "https://photos.example.com/", chromedp.ByQuery),
+
+		chromedp.WaitVisible(`#login-button`, chromedp.ByQuery),
 		chromedp.Click(`#login-button`, chromedp.ByQuery),
 
 		chromedp.WaitVisible(`#gallery img[alt="test.jpg"]`, chromedp.ByQuery),

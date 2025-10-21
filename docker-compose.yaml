@@ -1,10 +1,24 @@
 services:
+  acme-server:
+    image: c2fmzq/acme-server:integrationtest
+    user: "1000:1000"
+    hostname: acme-v02.api.letsencrypt.org
+    command: "--cert-file=/etc/ssl/certs/root-ca.pem"
+    volumes:
+      - tls:/etc/ssl/certs
+    healthcheck:
+      test: ["CMD", "/acme-server", "--ready", "--cert-file=/etc/ssl/certs/root-ca.pem"]
+      interval: 5s
+      retries: 5
+      start_period: 1s
+
   tlsproxy:
     image: c2fmzq/tlsproxy:integrationtest
     user: "1000:1000"
     hostname: tlsproxy.example.com
-    command: "--use-ephemeral-certificate-manager"
+    command: "--passphrase=test"
     volumes:
+      - tls:/etc/ssl/certs
       - ./testdata/tlsproxy-config.yaml:/config/config.yaml:ro
       - ./testdata/html:/html:ro
       - ./testdata/secure:/secure:ro
@@ -25,6 +39,9 @@ services:
           - mock-backend.example.com
           - pki.example.com
           - secure.example.com
+    depends_on:
+      acme-server:
+        condition: service_healthy
 
   photos-backend:
     image: c2fmzq/c2fmzq-server:integrationtest
@@ -58,14 +75,25 @@ services:
     user: "1000:1000"
     hostname: mock-ssh-server.example.com
     volumes:
+      - tls:/etc/ssl/certs:ro
       - ./testdata/mock_ssh_server_key:/mock_ssh_server_key:ro
+    depends_on:
+      acme-server:
+        condition: service_healthy
 
   mock-backend-internal:
     image: c2fmzq/mock-backend:integrationtest
     user: "1000:1000"
     command: [
-      "/backend", "--addr=:8443", "--jwks-url=https://www.example.com/jwks", "--allow-insecure-jwks-url",
+      "/backend", "--addr=:8443", "--jwks-url=https://www.example.com/jwks",
     ]
+    volumes:
+      - tls:/etc/ssl/certs:ro
+    depends_on:
+      tlsproxy:
+        condition: service_started
+      acme-server:
+        condition: service_healthy
 
   headless-shell:
     image: "chromedp/headless-shell:141.0.7390.37"
@@ -92,14 +120,22 @@ services:
     ]
     volumes:
       - ./testdata:/testdata:ro
+      - tls:/etc/ssl/certs:ro
       - download:/download
       - ./output:/output
     depends_on:
-      - tlsproxy
-      - photos-backend
-      - headless-shell
-      - mock-oidc-server
-      - mock-ssh-server
+      acme-server:
+        condition: service_healthy
+      tlsproxy:
+        condition: service_started
+      photos-backend:
+        condition: service_started
+      headless-shell:
+        condition: service_started
+      mock-oidc-server:
+        condition: service_started
+      mock-ssh-server:
+        condition: service_started
 
 networks:
   default:
@@ -107,6 +143,12 @@ networks:
 
 volumes:
   download:
+    driver: local
+    driver_opts:
+      type: "tmpfs"
+      device: "tmpfs"
+      o: "size=10M,uid=1000"
+  tls:
     driver: local
     driver_opts:
       type: "tmpfs"

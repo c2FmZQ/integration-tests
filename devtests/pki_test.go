@@ -92,12 +92,17 @@ func TestPKIGetCertificateP12(t *testing.T) {
 	t.Logf("Received a %T and a X.509 Certificate with Subject: %s", key, cert.Subject)
 
 	// Verify that the certificate works.
-	client := httpClient(t)
-	client.Transport.(*http.Transport).TLSClientConfig.Certificates = []tls.Certificate{{
-		PrivateKey:  key,
-		Certificate: [][]byte{cert.Raw},
-		Leaf:        cert,
-	}}
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				Certificates: []tls.Certificate{{
+					PrivateKey:  key,
+					Certificate: [][]byte{cert.Raw},
+					Leaf:        cert,
+				}},
+			},
+		},
+	}
 	url = "https://secure.example.com/"
 	resp, err := client.Get(url)
 	if err != nil {
