@@ -1,6 +1,6 @@
 module devtests
 
-go 1.24.3
+go 1.25.3
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327

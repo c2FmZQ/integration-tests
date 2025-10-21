@@ -37,7 +37,7 @@ if [[ -n "${WEBSITE_BRANCH}" ]]; then
 fi
 
 export CGO_ENABLED=0
-(cd ./acme-server && go build -o acme-server .)
+(cd ./acme-server && go test ./... && go build -o acme-server .)
 (cd ./mock-oidc-server && go build -o mock-oidc-server .)
 (cd ./mock-ssh-server && go build -o mock-ssh-server .)
 (cd ./tlsproxy/examples/backend && go build -o backend .)
