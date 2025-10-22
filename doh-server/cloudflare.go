@@ -50,7 +50,7 @@ func (s *server) addZone(name string, hosts []string) {
 	}
 	s.zones[name] = z
 	s.zoneIDs[z.ID] = name
-	log.Printf("Added zone %s with hosts %v", name, hosts)
+	log.Printf("Added zone %s [%s]  with hosts %v", name, z.ID, hosts)
 }
 
 func (s *server) handleZones(w http.ResponseWriter, r *http.Request) {
@@ -90,19 +90,24 @@ func (s *server) handleZones(w http.ResponseWriter, r *http.Request) {
 func (s *server) handleZone(w http.ResponseWriter, r *http.Request) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	parts := strings.Split(r.URL.Path, "/")
-	if len(parts) < 4 {
+	const prefix = "/client/v4/zones/"
+	if !strings.HasPrefix(r.URL.Path, prefix) {
+		http.Error(w, "unexpected path prefix", http.StatusNotFound)
+		return
+	}
+	parts := strings.Split(strings.TrimPrefix(r.URL.Path, prefix), "/")
+	if len(parts) < 1 {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	zoneID := parts[3]
+	zoneID := parts[0]
 	zoneName, ok := s.zoneIDs[zoneID]
 	if !ok {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
 	z := s.zones[zoneName]
-	if len(parts) == 4 {
+	if len(parts) == 1 {
 		// This is a request for the zone itself.
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(struct {
@@ -124,8 +129,8 @@ func (s *server) handleZone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(parts) > 4 && parts[4] == "dns_records" {
-		if len(parts) == 5 {
+	if len(parts) > 1 && parts[1] == "dns_records" {
+		if len(parts) == 2 {
 			// This is a request for the list of records.
 			var records []record
 			name := r.URL.Query().Get("name")
@@ -144,9 +149,9 @@ func (s *server) handleZone(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		if len(parts) == 6 {
+		if len(parts) == 3 {
 			// This is a request for a specific record.
-			recordID := parts[5]
+			recordID := parts[2]
 			rec, ok := z.Records[recordID]
 			if !ok {
 				http.Error(w, "not found", http.StatusNotFound)
