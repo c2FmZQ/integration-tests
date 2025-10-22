@@ -123,8 +123,13 @@ services:
     image: c2fmzq/doh-server:integrationtest
     user: "1000:1000"
     hostname: doh.example.com
+    command: "--domains=example.com --hosts=www.example.com,photos.example.com"
     volumes:
       - tls:/etc/ssl/certs:ro
+    networks:
+      default:
+        aliases:
+          - api.cloudflare.com
     depends_on:
       acme-server:
         condition: service_healthy

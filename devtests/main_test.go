@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/c2FmZQ/ech"
 	"github.com/c2FmZQ/ech/dns"
 	"github.com/chromedp/chromedp"
 )
@@ -199,7 +200,17 @@ func TestSSO(t *testing.T) {
 }
 
 func TestECH(t *testing.T) {
-	client := httpClientECH(t)
+	resolver, err := ech.NewResolver("https://doh.example.com/dns-query")
+	if err != nil {
+		t.Fatalf("ech.NewResolver: %v", err)
+	}
+	transport := ech.NewTransport()
+	transport.Resolver = resolver
+	transport.Dialer.RequireECH = true
+
+	client := &http.Client{
+		Transport: transport,
+	}
 	resp, err := client.Get("https://photos.example.com/")
 	if err != nil {
 		t.Fatalf("Get: %v", err)

@@ -7,6 +7,12 @@ ech:
   publicName: www.example.com
   endpoint: https://www.example.com/.ech
   interval: 11h13m
+  cloudflare:
+    - zone: 'example.com'
+      token: 'foo'
+      names:
+        - www.example.com
+        - photos.example.com
 oidc:
   - name: "mock-oidc"
     authorizationEndpoint: "http://mock-oidc-server.example.com:8080/authorization"
