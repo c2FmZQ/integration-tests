@@ -140,10 +140,11 @@ func (s *server) handleHTTPSQuery(response *dns.Message, question dns.Question) 
 	log.Printf("Received HTTPS query for %s", question.Name)
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	if z, ok := s.zones[question.Name]; ok {
-		for _, rec := range z.Records {
-			if rec.Name == question.Name {
-				var answer dns.RR
+	for _, z := range s.zones {
+		if strings.HasSuffix(question.Name, z.Name) {
+			for _, rec := range z.Records {
+				if rec.Name == question.Name {
+					var answer dns.RR
 				answer.Name = question.Name
 				answer.Type = dns.RRType("HTTPS")
 				answer.Class = question.Class
@@ -164,6 +165,7 @@ func (s *server) handleHTTPSQuery(response *dns.Message, question dns.Question) 
 				answer.Data = httpsRR
 				response.Answer = append(response.Answer, answer)
 				return
+				}
 			}
 		}
 	}

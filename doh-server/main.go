@@ -15,11 +15,13 @@ import (
 var (
 	acmeHost = flag.String("acme-host", "doh.example.com", "The host name for which to get an ACME certificate.")
 	domains  = flag.String("domains", "", "A comma-separated list of domain names to manage.")
+	hosts    = flag.String("hosts", "", "A comma-separated list of hostnames to add to the DNS zones.")
 )
 
 type server struct {
-	zones map[string]zone
-	mu    sync.RWMutex
+	zones   map[string]zone
+	zoneIDs map[string]string
+	mu      sync.RWMutex
 }
 
 // memCache is an in-memory cache for autocert.
@@ -60,13 +62,20 @@ func (m *memCache) Delete(ctx context.Context, key string) error {
 func main() {
 	flag.Parse()
 	s := &server{
-		zones: make(map[string]zone),
+		zones:   make(map[string]zone),
+		zoneIDs: make(map[string]string),
 	}
 	for _, d := range strings.Split(*domains, ",") {
 		if d == "" {
 			continue
 		}
-		s.addZone(d)
+		var zoneHosts []string
+		for _, h := range strings.Split(*hosts, ",") {
+			if strings.HasSuffix(h, d) {
+				zoneHosts = append(zoneHosts, h)
+			}
+		}
+		s.addZone(d, zoneHosts)
 	}
 
 	m := &autocert.Manager{

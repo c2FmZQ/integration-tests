@@ -123,7 +123,7 @@ services:
     image: c2fmzq/doh-server:integrationtest
     user: "1000:1000"
     hostname: doh.example.com
-    command: "--acme-host=doh.example.com --domains=example.com"
+    command: "--acme-host=doh.example.com --domains=example.com --hosts=www.example.com,photos.example.com,ssh.example.com,c2fmzq.org,mock-backend.example.com,pki.example.com,secure.example.com"
     volumes:
       - tls:/etc/ssl/certs:ro
     depends_on:

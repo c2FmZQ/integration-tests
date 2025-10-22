@@ -27,25 +27,30 @@ type httpsData struct {
 	Value    string `json:"value"`
 }
 
-func (s *server) addZone(name string) {
+func (s *server) addZone(name string, hosts []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	rec := record{
-		ID:   uuid.New().String(),
-		Name: name,
-		Data: httpsData{
-			Priority: 1,
-			Target:   ".",
-			Value:    "alpn=\"h2\"",
-		},
+	records := make(map[string]record)
+	for _, h := range hosts {
+		rec := record{
+			ID:   uuid.New().String(),
+			Name: h,
+			Data: httpsData{
+				Priority: 1,
+				Target:   ".",
+				Value:    "alpn=\"h2\"",
+			},
+		}
+		records[rec.ID] = rec
 	}
 	z := zone{
 		ID:      uuid.New().String(),
 		Name:    name,
-		Records: map[string]record{rec.ID: rec},
+		Records: records,
 	}
 	s.zones[name] = z
-	log.Printf("Added zone %s", name)
+	s.zoneIDs[z.ID] = name
+	log.Printf("Added zone %s with hosts %v", name, hosts)
 }
 
 func (s *server) handleZones(w http.ResponseWriter, r *http.Request) {
@@ -91,18 +96,12 @@ func (s *server) handleZone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	zoneID := parts[3]
-	var z *zone
-	for i := range s.zones {
-		zone := s.zones[i]
-		if zone.ID == zoneID {
-			z = &zone
-			break
-		}
-	}
-	if z.ID == "" {
+	zoneName, ok := s.zoneIDs[zoneID]
+	if !ok {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
+	z := s.zones[zoneName]
 	if len(parts) == 4 {
 		// This is a request for the zone itself.
 		w.Header().Set("Content-Type", "application/json")
@@ -129,8 +128,11 @@ func (s *server) handleZone(w http.ResponseWriter, r *http.Request) {
 		if len(parts) == 5 {
 			// This is a request for the list of records.
 			var records []record
+			name := r.URL.Query().Get("name")
 			for _, rec := range z.Records {
-				records = append(records, rec)
+				if name == "" || rec.Name == name {
+					records = append(records, rec)
+				}
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(struct {

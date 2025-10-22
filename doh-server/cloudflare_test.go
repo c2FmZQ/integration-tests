@@ -12,7 +12,7 @@ func TestCloudflareAPI(t *testing.T) {
 	s := &server{
 		zones: make(map[string]zone),
 	}
-	s.addZone("example.com")
+	s.addZone("example.com", []string{"www.example.com"})
 
 	// Test GET /client/v4/zones
 	req, err := http.NewRequest("GET", "/client/v4/zones?name=example.com", nil)
