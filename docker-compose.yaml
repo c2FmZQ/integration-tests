@@ -123,6 +123,7 @@ services:
     image: c2fmzq/doh-server:integrationtest
     user: "1000:1000"
     hostname: doh.example.com
+    command: "--acme-host=doh.example.com --domains=example.com"
     volumes:
       - tls:/etc/ssl/certs:ro
     depends_on:
@@ -140,7 +141,10 @@ services:
     ]
     volumes:
       - ./testdata:/testdata:ro
-      - tls:/etc/ssl/certs:ro
+      - type: volume
+        source: tls
+        target: /etc/ssl/certs
+        read_only: true
       - download:/download
       - ./output:/output
     depends_on:
