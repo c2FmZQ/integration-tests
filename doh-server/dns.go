@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"io"
 	"log"
 	"net"
@@ -143,39 +144,47 @@ func (s *server) handleHTTPSQuery(response *dns.Message, question dns.Question) 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, z := range s.zones {
-		if strings.HasSuffix(question.Name, z.Name) {
-			for _, rec := range z.Records {
-				if rec.Name == question.Name {
-					var answer dns.RR
-					answer.Name = question.Name
-					answer.Type = dns.RRType("HTTPS")
-					answer.Class = question.Class
-					answer.TTL = 3600
-					httpsRR := dns.HTTPS{
-						Priority: 1,
-						Target:   ".",
-					}
-					parts := strings.Split(rec.Data.Value, " ")
-					for _, part := range parts {
-						if strings.HasPrefix(part, "alpn=") {
-							httpsRR.ALPN = strings.Split(strings.Trim(part[5:], "\""), ",")
-						}
-						if strings.HasPrefix(part, "ech=") {
-							httpsRR.ECH = []byte(strings.Trim(part[4:], "\""))
-						}
-					}
-					answer.Data = httpsRR
-					response.Answer = append(response.Answer, answer)
-
-					ips, err := net.LookupIP(strings.TrimRight(question.Name, "."))
+		if !strings.HasSuffix(question.Name, z.Name) {
+			continue
+		}
+		for _, rec := range z.Records {
+			if rec.Name != strings.TrimSuffix(question.Name, ".") {
+				continue
+			}
+			var answer dns.RR
+			answer.Name = question.Name
+			answer.Type = dns.RRType("HTTPS")
+			answer.Class = question.Class
+			answer.TTL = 3600
+			httpsRR := dns.HTTPS{
+				Priority: 1,
+				Target:   ".",
+			}
+			parts := strings.Split(rec.Data.Value, " ")
+			for _, part := range parts {
+				if strings.HasPrefix(part, "alpn=") {
+					httpsRR.ALPN = strings.Split(strings.Trim(part[5:], "\""), ",")
+				}
+				if strings.HasPrefix(part, "ech=") {
+					encoded := strings.Trim(part[4:], "\"")
+					ech, err := base64.StdEncoding.DecodeString(encoded)
 					if err != nil {
-						log.Printf("Failed to resolve %s: %v", question.Name, err)
-						return
+						log.Printf("ech: %v", err)
+						continue
 					}
-					s.addIPAnswers(response, question, ips)
-					return
+					httpsRR.ECH = ech
 				}
 			}
+			answer.Data = httpsRR
+			response.Answer = append(response.Answer, answer)
+
+			ips, err := net.LookupIP(strings.TrimRight(question.Name, "."))
+			if err != nil {
+				log.Printf("Failed to resolve %s: %v", question.Name, err)
+				return
+			}
+			s.addIPAnswers(response, question, ips)
+			return
 		}
 	}
 

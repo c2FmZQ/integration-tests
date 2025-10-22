@@ -10,7 +10,8 @@ import (
 
 func TestCloudflareAPI(t *testing.T) {
 	s := &server{
-		zones: make(map[string]zone),
+		zones:   make(map[string]zone),
+		zoneIDs: make(map[string]string),
 	}
 	s.addZone("example.com", []string{"www.example.com"})
 

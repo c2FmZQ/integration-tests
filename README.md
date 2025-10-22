@@ -14,8 +14,9 @@ graph TD
         P((tlsproxy));
         subgraph "External Services"
             S1[acme-server];
-            S2[mock-oidc-server];
-            S3[mock-ssh-server];
+            S2["doh / cloudflare"];
+            S3[mock-oidc-server];
+            S4[mock-ssh-server];
         end
         subgraph "Backends"
             B1[photos-backend];
@@ -30,8 +31,9 @@ graph TD
     B -->|HTTPS| P;
     A -->|HTTPS| P;
     P -->|"ACME"| S1;
-    P -->|"OpenID Connect"| S2;
-    P -->|"WebSocket Proxy (TCP)"| S3;
+    P -->|"DoH + API"| S2;
+    P -->|"OpenID Connect"| S3;
+    P -->|"WebSocket Proxy (TCP)"| S4;
     S3 -->|"HTTPS (Get CA cert)"| P;
     P -->|TLSPASSTHROUGH Backend| B1;
     P -->|static content| B2;
@@ -43,6 +45,7 @@ graph TD
     style S1 fill:#eee,stroke:#333,stroke-width:2px
     style S2 fill:#eee,stroke:#333,stroke-width:2px
     style S3 fill:#eee,stroke:#333,stroke-width:2px
+    style S4 fill:#eee,stroke:#333,stroke-width:2px
     style A fill:#f9f,stroke:#333,stroke-width:2px
     style B fill:#ccf,stroke:#333,stroke-width:2px
     style P fill:#cfc,stroke:#333,stroke-width:2px
@@ -58,9 +61,10 @@ The services are:
 *   **`devtests`**: The main test container that runs the integration tests written in Go.
 *   **`headless-shell`**: A headless Chrome browser used to perform UI tests.
 *   **`tlsproxy`**: A TLS proxy that provides HTTPS termination, OIDC authentication, and routing to the backend services.
+*   **`acme-server`**: An in-memory ACME server for testing certificate issuance.
+*   **`doh / cloudflare`**: A mock DNS-over-HTTPS server and cloudflare API server for ECH integration.
 *   **`mock-oidc-server`**: A mock OIDC server for testing authentication.
 *   **`mock-ssh-server`**: A mock SSH server for testing `sshterm`.
-*   **`acme-server`**: An in-memory ACME server for testing certificate issuance.
 *   **`photos-backend`**: The backend for the photos application.
 *   **`c2fmzq.org`**: The c2fmzq.org website, served as static content.
 *   **`sshterm`**: A web-based SSH terminal, served as static content by the `tlsproxy` service.

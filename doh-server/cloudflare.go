@@ -88,8 +88,8 @@ func (s *server) handleZones(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *server) handleZone(w http.ResponseWriter, r *http.Request) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	const prefix = "/client/v4/zones/"
 	if !strings.HasPrefix(r.URL.Path, prefix) {
 		http.Error(w, "unexpected path prefix", http.StatusNotFound)
@@ -165,12 +165,8 @@ func (s *server) handleZone(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				s.mu.RUnlock()
-				s.mu.Lock()
 				rec.Data = req.Data
 				z.Records[recordID] = rec
-				s.mu.Unlock()
-				s.mu.RLock()
 			}
 			w.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(w).Encode(struct {

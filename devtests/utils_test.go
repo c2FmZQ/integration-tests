@@ -2,10 +2,6 @@ package integration_test
 
 import (
 	"context"
-	"crypto/tls"
-	"encoding/base64"
-	"io"
-	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -14,34 +10,6 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/chromedp"
 )
-
-// httpClientECH return an http.Client that's configured to trust tlsproxy's
-// current ephemeral certificate authority, and that can use Encrypted Client
-// Hello with tlsproxy.
-func httpClientECH(t *testing.T) *http.Client {
-	t.Helper()
-	resp, err := http.Get("https://www.example.com/.ech")
-	if err != nil {
-		t.Fatalf("ech: %v", err)
-	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("ech body: %v", err)
-	}
-	ech, err := base64.StdEncoding.DecodeString(string(b))
-	if err != nil {
-		t.Fatalf("ech decode: %v", err)
-	}
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				EncryptedClientHelloConfigList: ech,
-			},
-		},
-	}
-	return client
-}
 
 func click(t *testing.T, ctx context.Context, selector string) bool {
 	t.Helper()
