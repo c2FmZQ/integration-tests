@@ -160,9 +160,9 @@ func (s *server) handleZone(w http.ResponseWriter, r *http.Request) {
 					http.Error(w, err.Error(), http.StatusBadRequest)
 					return
 				}
-				rec.Data = req.Data
 				s.mu.RUnlock()
 				s.mu.Lock()
+				rec.Data = req.Data
 				z.Records[recordID] = rec
 				s.mu.Unlock()
 				s.mu.RLock()

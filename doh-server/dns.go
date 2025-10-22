@@ -164,6 +164,26 @@ func (s *server) handleHTTPSQuery(response *dns.Message, question dns.Question) 
 				}
 				answer.Data = httpsRR
 				response.Answer = append(response.Answer, answer)
+
+				ips, err := net.LookupIP(strings.TrimRight(question.Name, "."))
+				if err != nil {
+					log.Printf("Failed to resolve %s: %v", question.Name, err)
+					return
+				}
+				for _, ip := range ips {
+					var answer dns.RR
+					answer.Name = question.Name
+					answer.Class = question.Class
+					answer.TTL = 3600
+					if four := ip.To4(); four != nil {
+						answer.Type = dns.RRType("A")
+						answer.Data = four
+					} else {
+						answer.Type = dns.RRType("AAAA")
+						answer.Data = ip
+					}
+					response.Answer = append(response.Answer, answer)
+				}
 				return
 				}
 			}
