@@ -119,6 +119,19 @@ services:
       - ./testdata/test.jpg:/test.jpg
       - download:/download
 
+  doh-server:
+    image: c2fmzq/doh-server:integrationtest
+    user: "1000:1000"
+    hostname: doh.example.com
+    environment:
+      - ACME_DIRECTORY_URL=https://acme-v02.api.letsencrypt.org/directory
+      - ACME_ROOT_CA=/etc/ssl/certs/root-ca.pem
+    volumes:
+      - tls:/etc/ssl/certs:ro
+    depends_on:
+      acme-server:
+        condition: service_healthy
+
   devtests:
     image: c2fmzq/integration-tests:integrationtest
     user: "1000:1000"
