@@ -1,12 +1,16 @@
 package integration_test
 
 import (
+	"bytes"
 	"context"
+	"io"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/c2FmZQ/ech/dns"
 	"github.com/chromedp/chromedp"
 )
 
@@ -203,5 +207,73 @@ func TestECH(t *testing.T) {
 	resp.Body.Close()
 	if got, want := resp.TLS.ECHAccepted, true; got != want {
 		t.Errorf("ECHAccepted = %v, want %v", got, want)
+	}
+}
+
+func TestDoH(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	msg := &dns.Message{
+		Question: []dns.Question{
+			{
+				Name:  "doh.example.com",
+				Type:  dns.RRType("HTTPS"),
+				Class: 1, // IN
+			},
+		},
+	}
+	packed := msg.Bytes()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, "https://doh.example.com/dns-query", bytes.NewReader(packed))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/dns-message")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("StatusCode = %d, want %d", resp.StatusCode, http.StatusOK)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+
+	respMsg, err := dns.DecodeMessage(body)
+	if err != nil {
+		t.Fatalf("DecodeMessage: %v", err)
+	}
+
+	if len(respMsg.Answer) == 0 {
+		t.Fatalf("len(Answer) = 0, want > 0")
+	}
+	foundIP := false
+	foundHTTPS := false
+	for _, answer := range respMsg.Answer {
+		if ip, ok := answer.Data.(net.IP); ok {
+			if answer.Name != "doh.example.com" {
+				t.Errorf("A.Name = %q, want %q", answer.Name, "doh.example.com")
+			}
+			t.Logf("Got IP %s", ip)
+			foundIP = true
+		}
+		if _, ok := answer.Data.(dns.HTTPS); ok {
+			if answer.Name != "doh.example.com" {
+				t.Errorf("HTTPS.Name = %q, want %q", answer.Name, "doh.example.com")
+			}
+			foundHTTPS = true
+		}
+	}
+	if !foundHTTPS {
+		t.Error("No HTTPS record found in answer")
+	}
+	if !foundIP {
+		t.Error("No A or AAAA record found in answer")
 	}
 }

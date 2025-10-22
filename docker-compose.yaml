@@ -119,6 +119,16 @@ services:
       - ./testdata/test.jpg:/test.jpg
       - download:/download
 
+  doh-server:
+    image: c2fmzq/doh-server:integrationtest
+    user: "1000:1000"
+    hostname: doh.example.com
+    volumes:
+      - tls:/etc/ssl/certs:ro
+    depends_on:
+      acme-server:
+        condition: service_healthy
+
   devtests:
     image: c2fmzq/integration-tests:integrationtest
     user: "1000:1000"
@@ -126,6 +136,7 @@ services:
       "-test.v",
       "-test.timeout=10m",
       "-test.failfast",
+      "-test.run=${TEST_RUN:-.*}",
     ]
     volumes:
       - ./testdata:/testdata:ro
@@ -135,6 +146,8 @@ services:
     depends_on:
       acme-server:
         condition: service_healthy
+      doh-server:
+        condition: service_started
       tlsproxy:
         condition: service_started
       photos-backend:

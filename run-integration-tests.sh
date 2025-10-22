@@ -1,5 +1,10 @@
 #!/bin/bash -e
 
+RUN=""
+if [[ $# == 1 ]]; then
+  RUN="$1"
+fi
+
 cd "$(dirname $0)"
 
 if [[ ! -f "tlsproxy/Dockerfile" ]]; then
@@ -40,15 +45,19 @@ export CGO_ENABLED=0
 (cd ./acme-server && go test ./... && go build -o acme-server .)
 (cd ./mock-oidc-server && go build -o mock-oidc-server .)
 (cd ./mock-ssh-server && go build -o mock-ssh-server .)
+(cd ./doh-server && go build -o doh-server .)
 (cd ./tlsproxy/examples/backend && go build -o backend .)
 (cd ./devtests && go test -c -o integration-tests .)
 
 docker build -t c2fmzq/acme-server:integrationtest ./acme-server
+docker build -t c2fmzq/doh-server:integrationtest ./doh-server
 docker build -t c2fmzq/mock-oidc-server:integrationtest ./mock-oidc-server
 docker build -t c2fmzq/mock-ssh-server:integrationtest ./mock-ssh-server
 docker build -t c2fmzq/mock-backend:integrationtest ./tlsproxy/examples/backend
 docker build -t c2fmzq/integration-tests:integrationtest ./devtests
 
+set +e
+export TEST_RUN="${RUN}"
 docker compose -f ./docker-compose.yaml up \
   --abort-on-container-exit \
   --exit-code-from=devtests
