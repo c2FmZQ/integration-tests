@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"net"
 	"net/http"
 	"strings"
 	"testing"
@@ -210,7 +211,6 @@ func TestECH(t *testing.T) {
 }
 
 func TestDoH(t *testing.T) {
-	t.Parallel()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()
 
@@ -253,19 +253,27 @@ func TestDoH(t *testing.T) {
 	if len(respMsg.Answer) == 0 {
 		t.Fatalf("len(Answer) = 0, want > 0")
 	}
-	found := false
+	foundIP := false
+	foundHTTPS := false
 	for _, answer := range respMsg.Answer {
-		if httpsRR, ok := answer.Data.(dns.HTTPS); ok {
+		if ip, ok := answer.Data.(net.IP); ok {
+			if answer.Name != "doh.example.com" {
+				t.Errorf("A.Name = %q, want %q", answer.Name, "doh.example.com")
+			}
+			t.Logf("Got IP %s", ip)
+			foundIP = true
+		}
+		if _, ok := answer.Data.(dns.HTTPS); ok {
 			if answer.Name != "doh.example.com" {
 				t.Errorf("HTTPS.Name = %q, want %q", answer.Name, "doh.example.com")
 			}
-			if len(httpsRR.IPv4Hint) == 0 && len(httpsRR.IPv6Hint) == 0 {
-				t.Errorf("len(HTTPS.IPv4Hint) = 0 and len(HTTPS.IPv6Hint) = 0, want > 0")
-			}
-			found = true
+			foundHTTPS = true
 		}
 	}
-	if !found {
+	if !foundHTTPS {
 		t.Error("No HTTPS record found in answer")
+	}
+	if !foundIP {
+		t.Error("No A or AAAA record found in answer")
 	}
 }

@@ -123,9 +123,6 @@ services:
     image: c2fmzq/doh-server:integrationtest
     user: "1000:1000"
     hostname: doh.example.com
-    environment:
-      - ACME_DIRECTORY_URL=https://acme-v02.api.letsencrypt.org/directory
-      - ACME_ROOT_CA=/etc/ssl/certs/root-ca.pem
     volumes:
       - tls:/etc/ssl/certs:ro
     depends_on:
@@ -139,6 +136,7 @@ services:
       "-test.v",
       "-test.timeout=10m",
       "-test.failfast",
+      "-test.run=${TEST_RUN:-.*}",
     ]
     volumes:
       - ./testdata:/testdata:ro
@@ -148,6 +146,8 @@ services:
     depends_on:
       acme-server:
         condition: service_healthy
+      doh-server:
+        condition: service_started
       tlsproxy:
         condition: service_started
       photos-backend:

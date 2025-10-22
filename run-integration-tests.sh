@@ -1,5 +1,10 @@
 #!/bin/bash -e
 
+RUN=""
+if [[ $# == 1 ]]; then
+  RUN="$1"
+fi
+
 cd "$(dirname $0)"
 
 if [[ ! -f "tlsproxy/Dockerfile" ]]; then
@@ -51,6 +56,8 @@ docker build -t c2fmzq/mock-ssh-server:integrationtest ./mock-ssh-server
 docker build -t c2fmzq/mock-backend:integrationtest ./tlsproxy/examples/backend
 docker build -t c2fmzq/integration-tests:integrationtest ./devtests
 
+set +e
+export TEST_RUN="${RUN}"
 docker compose -f ./docker-compose.yaml up \
   --abort-on-container-exit \
   --exit-code-from=devtests

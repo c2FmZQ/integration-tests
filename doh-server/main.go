@@ -1,55 +1,69 @@
 package main
 
 import (
-	"crypto/tls"
-	"crypto/x509"
+	"context"
 	"io"
 	"log"
 	"net"
 	"net/http"
-	"os"
+	"slices"
 	"strings"
+	"sync"
 
 	"github.com/c2FmZQ/ech/dns"
-	"golang.org/x/crypto/acme"
 	"golang.org/x/crypto/acme/autocert"
 )
 
+// memCache is an in-memory cache for autocert.
+type memCache struct {
+	mu   sync.Mutex
+	data map[string][]byte
+}
+
+func newMemCache() *memCache {
+	return &memCache{
+		data: make(map[string][]byte),
+	}
+}
+
+func (m *memCache) Get(ctx context.Context, key string) ([]byte, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if v, ok := m.data[key]; ok {
+		return v, nil
+	}
+	return nil, autocert.ErrCacheMiss
+}
+
+func (m *memCache) Put(ctx context.Context, key string, data []byte) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.data[key] = slices.Clone(data)
+	return nil
+}
+
+func (m *memCache) Delete(ctx context.Context, key string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.data, key)
+	return nil
+}
+
 func main() {
 	m := &autocert.Manager{
-		Cache:      autocert.DirCache("/tmp/doh-server-certs"),
+		Cache:      newMemCache(),
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist("doh.example.com"),
-	}
-	if dirURL := os.Getenv("ACME_DIRECTORY_URL"); dirURL != "" {
-		rootCABytes, err := os.ReadFile(os.Getenv("ACME_ROOT_CA"))
-		if err != nil {
-			log.Fatalf("failed to read root CA: %v", err)
-		}
-		certs := x509.NewCertPool()
-		if ok := certs.AppendCertsFromPEM(rootCABytes); !ok {
-			log.Fatal("failed to parse root certificate")
-		}
-		m.Client = &acme.Client{
-			DirectoryURL: dirURL,
-			HTTPClient: &http.Client{
-				Transport: &http.Transport{
-					TLSClientConfig: &tls.Config{
-						RootCAs: certs,
-					},
-					ForceAttemptHTTP2: true,
-				},
-			},
-		}
+		Email:      "doh@example.com",
 	}
 
-	http.HandleFunc("/dns-query", handleDNSQuery)
+	// Main DoH server (HTTPS)
+	dohMux := http.NewServeMux()
+	dohMux.HandleFunc("/dns-query", handleDNSQuery)
 	server := &http.Server{
-		Addr: ":443",
-		TLSConfig: &tls.Config{
-			GetCertificate: m.GetCertificate,
-			NextProtos:     []string{"h2", "http/1.1", "acme-tls/1"},
-		},
+		Addr:      ":443",
+		Handler:   dohMux,
+		TLSConfig: m.TLSConfig(),
 	}
 
 	log.Println("Starting DoH server on :443")
@@ -93,7 +107,76 @@ func handleDNSQuery(w http.ResponseWriter, r *http.Request) {
 	response.Question = msg.Question
 
 	for _, question := range msg.Question {
-		if question.Type == dns.RRType("HTTPS") {
+		switch question.Type {
+		case dns.RRType("A"):
+			log.Printf("Received A query for %s", question.Name)
+			ips, err := net.LookupIP(strings.TrimRight(question.Name, "."))
+			if err != nil {
+				log.Printf("Failed to resolve %s: %v", question.Name, err)
+				response.RCode = 2 // SERVFAIL
+				continue
+			}
+			if len(ips) == 0 {
+				response.RCode = 3 // NXDOMAIN
+				continue
+			}
+			response.RCode = 0 // NOERROR
+			for _, ip := range ips {
+				if ip.To4() != nil {
+					var answer dns.RR
+					answer.Name = question.Name
+					answer.Type = dns.RRType("A")
+					answer.Class = question.Class
+					answer.TTL = 3600
+					answer.Data = ip.To4()
+					response.Answer = append(response.Answer, answer)
+				}
+			}
+		case dns.RRType("AAAA"):
+			log.Printf("Received AAAA query for %s", question.Name)
+			ips, err := net.LookupIP(strings.TrimRight(question.Name, "."))
+			if err != nil {
+				log.Printf("Failed to resolve %s: %v", question.Name, err)
+				response.RCode = 2 // SERVFAIL
+				continue
+			}
+			if len(ips) == 0 {
+				response.RCode = 3 // NXDOMAIN
+				continue
+			}
+			response.RCode = 0 // NOERROR
+			for _, ip := range ips {
+				if ip.To4() == nil {
+					var answer dns.RR
+					answer.Name = question.Name
+					answer.Type = dns.RRType("AAAA")
+					answer.Class = question.Class
+					answer.TTL = 3600
+					answer.Data = ip
+					response.Answer = append(response.Answer, answer)
+				}
+			}
+		case dns.RRType("CNAME"):
+			log.Printf("Received CNAME query for %s", question.Name)
+			cname, err := net.LookupCNAME(strings.TrimRight(question.Name, "."))
+			if err != nil {
+				log.Printf("Failed to resolve %s: %v", question.Name, err)
+				response.RCode = 2 // SERVFAIL
+				continue
+			}
+			if cname == "" {
+				response.RCode = 3 // NXDOMAIN
+				continue
+			}
+			response.RCode = 0 // NOERROR
+			var answer dns.RR
+			answer.Name = question.Name
+			answer.Type = dns.RRType("CNAME")
+			answer.Class = question.Class
+			answer.TTL = 3600
+			answer.Data = cname
+			response.Answer = append(response.Answer, answer)
+		case dns.RRType("HTTPS"):
 			log.Printf("Received HTTPS query for %s", question.Name)
 			ips, err := net.LookupIP(strings.TrimRight(question.Name, "."))
 			if err != nil {
@@ -116,15 +199,22 @@ func handleDNSQuery(w http.ResponseWriter, r *http.Request) {
 				Priority: 1,
 				Target:   ".",
 			}
-			for _, ip := range ips {
-				if ip.To4() != nil {
-					httpsRR.IPv4Hint = append(httpsRR.IPv4Hint, ip.To4())
-				} else {
-					httpsRR.IPv6Hint = append(httpsRR.IPv6Hint, ip)
-				}
-			}
 			answer.Data = httpsRR
 			response.Answer = append(response.Answer, answer)
+			for _, ip := range ips {
+				var answer dns.RR
+				answer.Name = question.Name
+				answer.Class = question.Class
+				answer.TTL = 3600
+				if four := ip.To4(); four != nil {
+					answer.Type = dns.RRType("A")
+					answer.Data = four
+				} else {
+					answer.Type = dns.RRType("AAAA")
+					answer.Data = ip
+				}
+				response.Answer = append(response.Answer, answer)
+			}
 		}
 	}
 
