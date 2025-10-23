@@ -1,3 +1,5 @@
+[![Integration Tests](https://github.com/c2FmZQ/integration-tests/actions/workflows/integration-tests.yml/badge.svg)](https://github.com/c2FmZQ/integration-tests/actions/workflows/integration-tests.yml)
+
 # Integration Tests
 
 This repository contains integration tests for a system composed of `tlsproxy`, `photos`, and `sshterm` services. The tests are orchestrated using `docker compose`.
