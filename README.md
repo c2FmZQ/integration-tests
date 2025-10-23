@@ -11,12 +11,14 @@ The following diagram shows the architecture of the integration test environment
 ```mermaid
 graph TD
     subgraph "Docker Compose"
-        A[devtests]
-        B["headless-shell (chrome)"];
+        subgraph "Client"
+            A[devtests]
+            B["headless-shell (chrome)"];
+        end
         P((tlsproxy));
         subgraph "External Services"
             S1[acme-server];
-            S2["doh / cloudflare"];
+            S2["doh-server<br>cloudflare API"];
             S3[mock-oidc-server];
             S4[mock-ssh-server];
         end
@@ -32,12 +34,15 @@ graph TD
     A -->|DevTools Protocol| B;
     B -->|HTTPS| P;
     A -->|HTTPS| P;
+    A -->|DoH| S2;
     P -->|"ACME"| S1;
-    P -->|"DoH + API"| S2;
+    P -->|"Rest API"| S2;
     P -->|"OpenID Connect"| S3;
     P -->|"WebSocket Proxy (TCP)"| S4;
-    S3 -->|"HTTPS (Get CA cert)"| P;
+    S4 -->|"HTTPS (Get SSH CA cert)"| P;
+    S2 -->|ACME| S1;
     P -->|TLSPASSTHROUGH Backend| B1;
+    B1 -->|ACME| S1;
     P -->|static content| B2;
     P -->|static content| B3;
     P -->|HTTPS Backend| B4;
