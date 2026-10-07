@@ -1,6 +1,6 @@
 module devtests
 
-go 1.25.3
+go 1.27.1
 
 require (
 	github.com/c2FmZQ/ech v0.3.7
